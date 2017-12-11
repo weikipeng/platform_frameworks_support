@@ -53,6 +53,7 @@ public class ParallaxFloatEffectTest {
         MockitoAnnotations.initMocks(this);
         mSource = new Parallax<Parallax.FloatProperty>() {
 
+            @Override
             public float getMaxValue() {
                 return mScreenMax;
             }

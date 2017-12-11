@@ -1,3 +1,9 @@
+// CHECKSTYLE:OFF Generated code
+/* This file is auto-generated from DetailsSupportFragment.java.  DO NOT MODIFY. */
+
+// CHECKSTYLE:OFF Generated code
+/* This file is auto-generated from DetailsFragment.java.  DO NOT MODIFY. */
+
 /*
  * Copyright (C) 2014 The Android Open Source Project
  *
@@ -102,7 +108,7 @@ public class DetailsFragment extends BaseFragment {
     void switchToVideoBeforeVideoFragmentCreated() {
         // if the video fragment is not ready: immediately fade out covering drawable,
         // hide title and mark mPendingFocusOnVideo and set focus on it later.
-        mDetailsBackgroundController.crossFadeBackgroundToVideo(true, true);
+        mDetailsBackgroundController.switchToVideoBeforeCreate();
         showTitle(false);
         mPendingFocusOnVideo = true;
         slideOutGridView();
@@ -168,7 +174,7 @@ public class DetailsFragment extends BaseFragment {
         final WeakReference<DetailsFragment> mRef;
 
         WaitEnterTransitionTimeout(DetailsFragment f) {
-            mRef = new WeakReference(f);
+            mRef = new WeakReference<>(f);
             f.getView().postDelayed(this, WAIT_ENTERTRANSITION_START);
         }
 
@@ -606,6 +612,9 @@ public class DetailsFragment extends BaseFragment {
      * @see DetailsFragmentBackgroundController#onCreateVideoFragment()
      */
     final Fragment findOrCreateVideoFragment() {
+        if (mVideoFragment != null) {
+            return mVideoFragment;
+        }
         Fragment fragment = getChildFragmentManager()
                 .findFragmentById(R.id.video_surface_container);
         if (fragment == null && mDetailsBackgroundController != null) {
@@ -617,6 +626,7 @@ public class DetailsFragment extends BaseFragment {
                 // wait next cycle for Fragment view created so we can focus on it.
                 // This is a bit hack eventually we will do commitNow() which get view immediately.
                 getView().post(new Runnable() {
+                    @Override
                     public void run() {
                         if (getView() != null) {
                             switchToVideo();
@@ -767,7 +777,7 @@ public class DetailsFragment extends BaseFragment {
 
     @Override
     protected Object createEntranceTransition() {
-        return TransitionHelper.loadTransition(FragmentUtil.getContext(this),
+        return TransitionHelper.loadTransition(FragmentUtil.getContext(DetailsFragment.this),
                 R.transition.lb_details_enter_transition);
     }
 

@@ -26,10 +26,12 @@ import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 import android.content.Intent;
+import android.os.Build;
 import android.support.test.InstrumentationRegistry;
-import android.support.test.filters.MediumTest;
+import android.support.test.filters.LargeTest;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
+import android.support.v17.leanback.testutils.PollingCheck;
 import android.support.v17.leanback.widget.ItemBridgeAdapter;
 import android.support.v17.leanback.widget.ListRowPresenter;
 import android.support.v17.leanback.widget.Presenter;
@@ -43,13 +45,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
-@MediumTest
+@LargeTest
 @RunWith(AndroidJUnit4.class)
 public class BrowseSupportFragmentTest {
 
     static final String TAG = "BrowseSupportFragmentTest";
-    static final long TRANSITION_LENGTH = 1000;
-    static final long HORIZONTAL_SCROLL_WAIT = 2000;
+    static final long WAIT_TRANSIITON_TIMEOUT = 10000;
 
     @Rule
     public ActivityTestRule<BrowseSupportFragmentTestActivity> activityTestRule =
@@ -59,6 +60,7 @@ public class BrowseSupportFragmentTest {
     @After
     public void afterTest() throws Throwable {
         activityTestRule.runOnUiThread(new Runnable() {
+            @Override
             public void run() {
                 if (mActivity != null) {
                     mActivity.finish();
@@ -66,6 +68,28 @@ public class BrowseSupportFragmentTest {
                 }
             }
         });
+    }
+
+    void waitForEntranceTransitionFinished() {
+        PollingCheck.waitFor(WAIT_TRANSIITON_TIMEOUT, new PollingCheck.PollingCheckCondition() {
+            @Override
+            public boolean canProceed() {
+                if (Build.VERSION.SDK_INT >= 21) {
+                    return mActivity.getBrowseTestSupportFragment() != null
+                            && mActivity.getBrowseTestSupportFragment().mEntranceTransitionEnded;
+                } else {
+                    // when entrance transition not supported, wait main fragment loaded.
+                    return mActivity.getBrowseTestSupportFragment() != null
+                            && mActivity.getBrowseTestSupportFragment().getMainFragment() != null;
+                }
+            }
+        });
+    }
+
+    void waitForHeaderTransitionFinished() {
+        View row = mActivity.getBrowseTestSupportFragment().getRowsSupportFragment().getRowViewHolder(
+                mActivity.getBrowseTestSupportFragment().getSelectedPosition()).view;
+        PollingCheck.waitFor(WAIT_TRANSIITON_TIMEOUT, new PollingCheck.ViewStableOnScreen(row));
     }
 
     @Test
@@ -76,11 +100,11 @@ public class BrowseSupportFragmentTest {
         intent.putExtra(BrowseSupportFragmentTestActivity.EXTRA_ADD_TO_BACKSTACK , true);
         mActivity = activityTestRule.launchActivity(intent);
 
-        Thread.sleep(dataLoadingDelay + TRANSITION_LENGTH);
+        waitForEntranceTransitionFinished();
 
         assertNotNull(mActivity.getBrowseTestSupportFragment().getMainFragment());
         sendKeys(KeyEvent.KEYCODE_DPAD_RIGHT);
-        Thread.sleep(TRANSITION_LENGTH);
+        waitForHeaderTransitionFinished();
         sendKeys(KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_BACK);
     }
 
@@ -92,11 +116,11 @@ public class BrowseSupportFragmentTest {
         intent.putExtra(BrowseSupportFragmentTestActivity.EXTRA_ADD_TO_BACKSTACK , false);
         mActivity = activityTestRule.launchActivity(intent);
 
-        Thread.sleep(dataLoadingDelay + TRANSITION_LENGTH);
+        waitForEntranceTransitionFinished();
 
         assertNotNull(mActivity.getBrowseTestSupportFragment().getMainFragment());
         sendKeys(KeyEvent.KEYCODE_DPAD_RIGHT);
-        Thread.sleep(TRANSITION_LENGTH);
+        waitForHeaderTransitionFinished();
         sendKeys(KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_BACK);
     }
 
@@ -122,7 +146,7 @@ public class BrowseSupportFragmentTest {
         intent.putExtra(BrowseSupportFragmentTestActivity.EXTRA_ADD_TO_BACKSTACK , true);
         mActivity = activityTestRule.launchActivity(intent);
 
-        Thread.sleep(dataLoadingDelay + TRANSITION_LENGTH);
+        waitForEntranceTransitionFinished();
 
         Presenter.ViewHolderTask itemTask = Mockito.spy(
                 new ItemSelectionTask(mActivity, selectRow));
@@ -161,13 +185,32 @@ public class BrowseSupportFragmentTest {
         intent.putExtra(BrowseSupportFragmentTestActivity.EXTRA_SET_ADAPTER_AFTER_DATA_LOAD, true);
         mActivity = activityTestRule.launchActivity(intent);
 
-        Thread.sleep(dataLoadingDelay + TRANSITION_LENGTH);
+        waitForEntranceTransitionFinished();
 
         InstrumentationRegistry.getInstrumentation().callActivityOnRestart(mActivity);
         activityTestRule.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 mActivity.recreate();
+            }
+        });
+    }
+
+
+    @Test
+    public void lateLoadingHeaderDisabled() throws Throwable {
+        final long dataLoadingDelay = 1000;
+        Intent intent = new Intent();
+        intent.putExtra(BrowseSupportFragmentTestActivity.EXTRA_LOAD_DATA_DELAY, dataLoadingDelay);
+        intent.putExtra(BrowseSupportFragmentTestActivity.EXTRA_HEADERS_STATE,
+                BrowseSupportFragment.HEADERS_DISABLED);
+        mActivity = activityTestRule.launchActivity(intent);
+        waitForEntranceTransitionFinished();
+        PollingCheck.waitFor(new PollingCheck.PollingCheckCondition() {
+            @Override
+            public boolean canProceed() {
+                return mActivity.getBrowseTestSupportFragment().getGridView() != null
+                        && mActivity.getBrowseTestSupportFragment().getGridView().getChildCount() > 0;
             }
         });
     }
@@ -188,6 +231,7 @@ public class BrowseSupportFragmentTest {
             this.expectedRow = expectedRow;
         }
 
+        @Override
         public void run(Presenter.ViewHolder holder) {
             android.util.Log.d(TAG, dumpRecyclerView(activity.getBrowseTestSupportFragment()
                     .getGridView()));

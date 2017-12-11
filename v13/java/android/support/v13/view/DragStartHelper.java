@@ -17,9 +17,7 @@
 package android.support.v13.view;
 
 
-import android.annotation.TargetApi;
 import android.graphics.Point;
-import android.support.annotation.RequiresApi;
 import android.support.v4.view.InputDeviceCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.view.MotionEvent;
@@ -70,8 +68,6 @@ import android.view.View;
  * }
  * </pre>
  */
-@RequiresApi(13)
-@TargetApi(13)
 public class DragStartHelper {
     final private View mView;
     final private OnDragStartListener mListener;
@@ -142,8 +138,8 @@ public class DragStartHelper {
 
             case MotionEvent.ACTION_MOVE:
                 if (!MotionEventCompat.isFromSource(event, InputDeviceCompat.SOURCE_MOUSE)
-                        || (MotionEventCompat.getButtonState(event)
-                                & MotionEventCompat.BUTTON_PRIMARY) == 0) {
+                        || (event.getButtonState()
+                                & MotionEvent.BUTTON_PRIMARY) == 0) {
                     break;
                 }
                 if (mDragging) {

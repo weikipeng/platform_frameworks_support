@@ -18,7 +18,6 @@ package android.support.design.widget;
 
 import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
@@ -36,7 +35,6 @@ import android.support.annotation.RestrictTo;
 import android.support.annotation.VisibleForTesting;
 import android.support.design.R;
 import android.support.design.widget.FloatingActionButtonImpl.InternalVisibilityChangedListener;
-import android.support.v4.content.res.ConfigurationHelper;
 import android.support.v4.view.ViewCompat;
 import android.support.v7.widget.AppCompatImageHelper;
 import android.util.AttributeSet;
@@ -250,6 +248,7 @@ public class FloatingActionButton extends VisibilityAwareImageButton {
      *
      * @param tint the tint to apply, may be {@code null} to clear tint
      */
+    @Override
     public void setBackgroundTintList(@Nullable ColorStateList tint) {
         if (mBackgroundTint != tint) {
             mBackgroundTint = tint;
@@ -279,6 +278,7 @@ public class FloatingActionButton extends VisibilityAwareImageButton {
      * @param tintMode the blending mode used to apply the tint, may be
      *                 {@code null} to clear tint
      */
+    @Override
     public void setBackgroundTintMode(@Nullable PorterDuff.Mode tintMode) {
         if (mBackgroundTintMode != tintMode) {
             mBackgroundTintMode = tintMode;
@@ -439,8 +439,8 @@ public class FloatingActionButton extends VisibilityAwareImageButton {
         switch (size) {
             case SIZE_AUTO:
                 // If we're set to auto, grab the size from resources and refresh
-                final int width = ConfigurationHelper.getScreenWidthDp(res);
-                final int height = ConfigurationHelper.getScreenHeightDp(res);
+                final int width = res.getConfiguration().screenWidthDp;
+                final int height = res.getConfiguration().screenHeightDp;
                 return Math.max(width, height) < AUTO_MINI_LARGEST_SCREEN_WIDTH
                         ? getSizeDimension(SIZE_MINI)
                         : getSizeDimension(SIZE_NORMAL);
@@ -470,7 +470,6 @@ public class FloatingActionButton extends VisibilityAwareImageButton {
         getImpl().onDrawableStateChanged(getDrawableState());
     }
 
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     @Override
     public void jumpDrawablesToCurrentState() {
         super.jumpDrawablesToCurrentState();
@@ -797,16 +796,10 @@ public class FloatingActionButton extends VisibilityAwareImageButton {
     }
 
     private FloatingActionButtonImpl createImpl() {
-        final int sdk = Build.VERSION.SDK_INT;
-        if (sdk >= 21) {
-            return new FloatingActionButtonLollipop(this, new ShadowDelegateImpl(),
-                    ViewUtils.DEFAULT_ANIMATOR_CREATOR);
-        } else if (sdk >= 14) {
-            return new FloatingActionButtonIcs(this, new ShadowDelegateImpl(),
-                    ViewUtils.DEFAULT_ANIMATOR_CREATOR);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            return new FloatingActionButtonLollipop(this, new ShadowDelegateImpl());
         } else {
-            return new FloatingActionButtonGingerbread(this, new ShadowDelegateImpl(),
-                    ViewUtils.DEFAULT_ANIMATOR_CREATOR);
+            return new FloatingActionButtonImpl(this, new ShadowDelegateImpl());
         }
     }
 

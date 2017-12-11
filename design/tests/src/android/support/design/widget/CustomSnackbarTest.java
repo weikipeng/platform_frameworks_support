@@ -40,8 +40,8 @@ import android.support.design.test.R;
 import android.support.design.testutils.SnackbarUtils;
 import android.support.test.espresso.ViewAction;
 import android.support.test.espresso.ViewInteraction;
+import android.support.test.filters.LargeTest;
 import android.support.test.filters.MediumTest;
-import android.support.test.filters.SmallTest;
 import android.support.v4.view.ViewCompat;
 import android.view.LayoutInflater;
 
@@ -98,15 +98,15 @@ public class CustomSnackbarTest extends BaseInstrumentationTestCase<SnackbarActi
                 new BaseTransientBottomBar.ContentViewCallback() {
                     @Override
                     public void animateContentIn(int delay, int duration) {
-                        ViewCompat.setAlpha(content, 0f);
-                        ViewCompat.animate(content).alpha(1f).setDuration(duration)
+                        content.setAlpha(0f);
+                        content.animate().alpha(1f).setDuration(duration)
                                 .setStartDelay(delay).start();
                     }
 
                     @Override
                     public void animateContentOut(int delay, int duration) {
-                        ViewCompat.setAlpha(content, 1f);
-                        ViewCompat.animate(content).alpha(0f).setDuration(duration)
+                        content.setAlpha(1f);
+                        content.animate().alpha(0f).setDuration(duration)
                                 .setStartDelay(delay).start();
                     }
                 };
@@ -114,7 +114,7 @@ public class CustomSnackbarTest extends BaseInstrumentationTestCase<SnackbarActi
     }
 
     @Test
-    @SmallTest
+    @LargeTest
     public void testBasicContent() throws Throwable {
         // Verify different combinations of snackbar content (title / subtitle and action)
         // and duration
@@ -228,7 +228,7 @@ public class CustomSnackbarTest extends BaseInstrumentationTestCase<SnackbarActi
     }
 
     @Test
-    @MediumTest
+    @LargeTest
     public void testDismissViaTimeout() throws Throwable {
         verifyDismissCallback(
                 onView(isAssignableFrom(Snackbar.SnackbarLayout.class)),

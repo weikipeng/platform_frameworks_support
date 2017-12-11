@@ -16,9 +16,14 @@
 
 package android.support.v17.leanback.media;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
@@ -78,4 +83,59 @@ public class PlaybackGlueTest {
         Mockito.verify(glue2, times(1)).onDetachedFromHost();
     }
 
+    @Test
+    public void listenerModification() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        PlaybackGlue glue = Mockito.spy(new PlaybackGlueImpl(context));
+        PlaybackGlueHostImpl host = new PlaybackGlueHostImpl();
+
+        glue.setHost(host);
+        final boolean[] called = new boolean[] {false, false};
+        glue.addPlayerCallback(new PlaybackGlue.PlayerCallback() {
+            @Override
+            public void onPreparedStateChanged(PlaybackGlue glue) {
+                called[0] = true;
+            }
+        });
+        glue.addPlayerCallback(new PlaybackGlue.PlayerCallback() {
+            @Override
+            public void onPreparedStateChanged(PlaybackGlue glue) {
+                glue.removePlayerCallback(this);
+            }
+        });
+        glue.addPlayerCallback(new PlaybackGlue.PlayerCallback() {
+            @Override
+            public void onPreparedStateChanged(PlaybackGlue glue) {
+                called[1] = true;
+            }
+        });
+
+        for (PlaybackGlue.PlayerCallback callback: glue.getPlayerCallbacks()) {
+            callback.onPreparedStateChanged(glue);
+        }
+        assertTrue(called[0]);
+        assertTrue(called[1]);
+        assertEquals(2, glue.getPlayerCallbacks().size());
+    }
+
+    @Test
+    public void playWhenPrepared() {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        PlaybackGlue glue = Mockito.spy(new PlaybackGlueImpl(context));
+        PlaybackGlueHostImpl host = new PlaybackGlueHostImpl();
+
+        when(glue.isPrepared()).thenReturn(false);
+        glue.setHost(host);
+        glue.playWhenPrepared();
+        assertFalse(glue.isPrepared());
+        Mockito.verify(glue, never()).play();
+
+        when(glue.isPrepared()).thenReturn(true);
+        for (PlaybackGlue.PlayerCallback callback: glue.getPlayerCallbacks()) {
+            callback.onPreparedStateChanged(glue);
+        }
+        assertTrue(glue.isPrepared());
+        Mockito.verify(glue, times(1)).play();
+        assertEquals(0, glue.getPlayerCallbacks().size());
+    }
 }

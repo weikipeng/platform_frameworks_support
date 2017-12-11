@@ -15,14 +15,14 @@
  */
 package android.support.v17.leanback.app;
 
-import android.annotation.TargetApi;
+import android.support.annotation.RequiresApi;
 import android.app.Fragment;
 import android.content.Context;
 import android.os.Build;
 
 class FragmentUtil {
 
-    @TargetApi(23)
+    @RequiresApi(23)
     private static Context getContextNew(Fragment fragment) {
         return fragment.getContext();
     }

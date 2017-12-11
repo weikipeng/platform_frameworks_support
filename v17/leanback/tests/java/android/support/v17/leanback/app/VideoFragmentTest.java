@@ -25,7 +25,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.test.InstrumentationRegistry;
-import android.support.test.filters.MediumTest;
+import android.support.test.filters.LargeTest;
 import android.support.test.runner.AndroidJUnit4;
 import android.support.v17.leanback.media.MediaPlayerGlue;
 import android.support.v17.leanback.media.PlaybackGlue;
@@ -42,7 +42,7 @@ import junit.framework.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@MediumTest
+@LargeTest
 @RunWith(AndroidJUnit4.class)
 public class VideoFragmentTest extends SingleFragmentTestBase {
 
@@ -163,11 +163,13 @@ public class VideoFragmentTest extends SingleFragmentTestBase {
             mGlue.setTitle("Leanback team at work");
             mGlue.setMediaSource(
                     Uri.parse("android.resource://android.support.v17.leanback.test/raw/video"));
-            mGlue.setPlayerCallback(new PlaybackGlue.PlayerCallback() {
+            mGlue.addPlayerCallback(new PlaybackGlue.PlayerCallback() {
                 @Override
-                public void onReadyForPlayback() {
-                    mGlueOnReadyForPlaybackCalled++;
-                    mGlue.play();
+                public void onPreparedStateChanged(PlaybackGlue glue) {
+                    if (glue.isPrepared()) {
+                        mGlueOnReadyForPlaybackCalled++;
+                        mGlue.play();
+                    }
                 }
             });
             mGlue.setHost(new VideoFragmentGlueHost(this));

@@ -28,7 +28,7 @@ import static org.junit.Assert.fail;
 import android.graphics.Rect;
 import android.os.Build;
 import android.support.annotation.NonNull;
-import android.support.test.filters.MediumTest;
+import android.support.test.filters.LargeTest;
 import android.support.test.filters.SdkSuppress;
 import android.support.test.runner.AndroidJUnit4;
 import android.support.v4.view.ViewCompat;
@@ -53,7 +53,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Tests for {@link SimpleItemAnimator} API.
  */
-@MediumTest
+@LargeTest
 @RunWith(AndroidJUnit4.class)
 public class RecyclerViewAnimationsTest extends BaseRecyclerViewAnimationsTest {
 
@@ -1404,7 +1404,7 @@ public class RecyclerViewAnimationsTest extends BaseRecyclerViewAnimationsTest {
             public void onViewDetachedFromWindow(TestViewHolder holder) {
                 if ((addedView[0] == holder.itemView || addedView[1] == holder.itemView)
                         && ViewCompat.hasTransientState(holder.itemView)) {
-                    ViewCompat.animate(holder.itemView).cancel();
+                    holder.itemView.animate().cancel();
                 }
                 super.onViewDetachedFromWindow(holder);
             }

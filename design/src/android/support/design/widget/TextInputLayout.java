@@ -16,6 +16,9 @@
 
 package android.support.design.widget;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
 import android.graphics.Canvas;
@@ -39,13 +42,10 @@ import android.support.annotation.VisibleForTesting;
 import android.support.design.R;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.graphics.drawable.DrawableCompat;
-import android.support.v4.os.ParcelableCompat;
-import android.support.v4.os.ParcelableCompatCreatorCallbacks;
 import android.support.v4.view.AbsSavedState;
 import android.support.v4.view.AccessibilityDelegateCompat;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.view.ViewCompat;
-import android.support.v4.view.ViewPropertyAnimatorListenerAdapter;
 import android.support.v4.view.accessibility.AccessibilityNodeInfoCompat;
 import android.support.v4.widget.Space;
 import android.support.v4.widget.TextViewCompat;
@@ -53,6 +53,7 @@ import android.support.v7.content.res.AppCompatResources;
 import android.support.v7.widget.AppCompatDrawableManager;
 import android.support.v7.widget.AppCompatTextView;
 import android.support.v7.widget.TintTypedArray;
+import android.support.v7.widget.WithHint;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -64,6 +65,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewStructure;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.EditText;
@@ -112,7 +114,7 @@ import android.widget.TextView;
  * may not return the TextInputLayout itself, but rather an intermediate View. If you need
  * to access a View directly, set an {@code android:id} and use {@link View#findViewById(int)}.
  */
-public class TextInputLayout extends LinearLayout {
+public class TextInputLayout extends LinearLayout implements WithHint {
 
     private static final int ANIMATION_DURATION = 200;
     private static final int INVALID_MAX_LENGTH = -1;
@@ -121,6 +123,7 @@ public class TextInputLayout extends LinearLayout {
 
     private final FrameLayout mInputFrame;
     EditText mEditText;
+    private CharSequence mOriginalHint;
 
     private boolean mHintEnabled;
     private CharSequence mHint;
@@ -168,7 +171,7 @@ public class TextInputLayout extends LinearLayout {
     final CollapsingTextHelper mCollapsingTextHelper = new CollapsingTextHelper(this);
 
     private boolean mHintAnimationEnabled;
-    private ValueAnimatorCompat mAnimator;
+    private ValueAnimator mAnimator;
 
     private boolean mHasReconstructedEditTextBackground;
     private boolean mInDrawableStateChanged;
@@ -291,7 +294,8 @@ public class TextInputLayout extends LinearLayout {
      * @param typeface typeface to use, or {@code null} to use the default.
      */
     public void setTypeface(@Nullable Typeface typeface) {
-        if (typeface != mTypeface) {
+        if ((mTypeface != null && !mTypeface.equals(typeface))
+                || (mTypeface == null && typeface != null)) {
             mTypeface = typeface;
 
             mCollapsingTextHelper.setTypefaces(typeface);
@@ -310,6 +314,24 @@ public class TextInputLayout extends LinearLayout {
     @NonNull
     public Typeface getTypeface() {
         return mTypeface;
+    }
+
+    @Override
+    public void dispatchProvideAutofillStructure(ViewStructure structure, int flags) {
+        if (mOriginalHint == null || mEditText == null) {
+            super.dispatchProvideAutofillStructure(structure, flags);
+            return;
+        }
+
+        // Temporarily sets child's hint to its original value so it is properly set in the
+        // child's ViewStructure.
+        final CharSequence hint = mEditText.getHint();
+        mEditText.setHint(mOriginalHint);
+        try {
+            super.dispatchProvideAutofillStructure(structure, flags);
+        } finally {
+            mEditText.setHint(hint);
+        }
     }
 
     private void setEditText(EditText editText) {
@@ -363,7 +385,9 @@ public class TextInputLayout extends LinearLayout {
 
         // If we do not have a valid hint, try and retrieve it from the EditText, if enabled
         if (mHintEnabled && TextUtils.isEmpty(mHint)) {
-            setHint(mEditText.getHint());
+            // Save the hint so it can be restored on dispatchProvideAutofillStructure();
+            mOriginalHint = mEditText.getHint();
+            setHint(mOriginalHint);
             // Clear the EditText's hint as we will display it ourselves
             mEditText.setHint(null);
         }
@@ -474,6 +498,7 @@ public class TextInputLayout extends LinearLayout {
      *
      * @attr ref android.support.design.R.styleable#TextInputLayout_android_hint
      */
+    @Override
     @Nullable
     public CharSequence getHint() {
         return mHintEnabled ? mHint : null;
@@ -595,7 +620,7 @@ public class TextInputLayout extends LinearLayout {
     public void setErrorEnabled(boolean enabled) {
         if (mErrorEnabled != enabled) {
             if (mErrorView != null) {
-                ViewCompat.animate(mErrorView).cancel();
+                mErrorView.animate().cancel();
             }
 
             if (enabled) {
@@ -625,8 +650,8 @@ public class TextInputLayout extends LinearLayout {
                     // we manually set something appropriate
                     TextViewCompat.setTextAppearance(mErrorView,
                             android.support.v7.appcompat.R.style.TextAppearance_AppCompat_Caption);
-                    mErrorView.setTextColor(ContextCompat.getColor(
-                            getContext(), R.color.design_textinput_error_color_light));
+                    mErrorView.setTextColor(ContextCompat.getColor(getContext(),
+                            android.support.v7.appcompat.R.color.error_color_material));
                 }
                 mErrorView.setVisibility(INVISIBLE);
                 ViewCompat.setAccessibilityLiveRegion(mErrorView,
@@ -698,43 +723,43 @@ public class TextInputLayout extends LinearLayout {
         mErrorShown = !TextUtils.isEmpty(error);
 
         // Cancel any on-going animation
-        ViewCompat.animate(mErrorView).cancel();
+        mErrorView.animate().cancel();
 
         if (mErrorShown) {
             mErrorView.setText(error);
             mErrorView.setVisibility(VISIBLE);
 
             if (animate) {
-                if (ViewCompat.getAlpha(mErrorView) == 1f) {
+                if (mErrorView.getAlpha() == 1f) {
                     // If it's currently 100% show, we'll animate it from 0
-                    ViewCompat.setAlpha(mErrorView, 0f);
+                    mErrorView.setAlpha(0f);
                 }
-                ViewCompat.animate(mErrorView)
+                mErrorView.animate()
                         .alpha(1f)
                         .setDuration(ANIMATION_DURATION)
                         .setInterpolator(AnimationUtils.LINEAR_OUT_SLOW_IN_INTERPOLATOR)
-                        .setListener(new ViewPropertyAnimatorListenerAdapter() {
+                        .setListener(new AnimatorListenerAdapter() {
                             @Override
-                            public void onAnimationStart(View view) {
-                                view.setVisibility(VISIBLE);
+                            public void onAnimationStart(Animator animator) {
+                                mErrorView.setVisibility(VISIBLE);
                             }
                         }).start();
             } else {
                 // Set alpha to 1f, just in case
-                ViewCompat.setAlpha(mErrorView, 1f);
+                mErrorView.setAlpha(1f);
             }
         } else {
             if (mErrorView.getVisibility() == VISIBLE) {
                 if (animate) {
-                    ViewCompat.animate(mErrorView)
+                    mErrorView.animate()
                             .alpha(0f)
                             .setDuration(ANIMATION_DURATION)
                             .setInterpolator(AnimationUtils.FAST_OUT_LINEAR_IN_INTERPOLATOR)
-                            .setListener(new ViewPropertyAnimatorListenerAdapter() {
+                            .setListener(new AnimatorListenerAdapter() {
                                 @Override
-                                public void onAnimationEnd(View view) {
+                                public void onAnimationEnd(Animator animator) {
                                     mErrorView.setText(error);
-                                    view.setVisibility(INVISIBLE);
+                                    mErrorView.setVisibility(INVISIBLE);
                                 }
                             }).start();
                 } else {
@@ -769,8 +794,8 @@ public class TextInputLayout extends LinearLayout {
                     // we manually set something appropriate
                     TextViewCompat.setTextAppearance(mCounterView,
                             android.support.v7.appcompat.R.style.TextAppearance_AppCompat_Caption);
-                    mCounterView.setTextColor(ContextCompat.getColor(
-                            getContext(), R.color.design_textinput_error_color_light));
+                    mCounterView.setTextColor(ContextCompat.getColor(getContext(),
+                            android.support.v7.appcompat.R.color.error_color_material));
                 }
                 addIndicator(mCounterView, -1);
                 if (mEditText == null) {
@@ -938,6 +963,7 @@ public class TextInputLayout extends LinearLayout {
 
     static class SavedState extends AbsSavedState {
         CharSequence error;
+        boolean isPasswordToggledVisible;
 
         SavedState(Parcelable superState) {
             super(superState);
@@ -946,6 +972,7 @@ public class TextInputLayout extends LinearLayout {
         SavedState(Parcel source, ClassLoader loader) {
             super(source, loader);
             error = TextUtils.CHAR_SEQUENCE_CREATOR.createFromParcel(source);
+            isPasswordToggledVisible = (source.readInt() == 1);
 
         }
 
@@ -953,6 +980,7 @@ public class TextInputLayout extends LinearLayout {
         public void writeToParcel(Parcel dest, int flags) {
             super.writeToParcel(dest, flags);
             TextUtils.writeToParcel(error, dest, flags);
+            dest.writeInt(isPasswordToggledVisible ? 1 : 0);
         }
 
         @Override
@@ -962,18 +990,22 @@ public class TextInputLayout extends LinearLayout {
                     + " error=" + error + "}";
         }
 
-        public static final Creator<SavedState> CREATOR = ParcelableCompat.newCreator(
-                new ParcelableCompatCreatorCallbacks<SavedState>() {
-                    @Override
-                    public SavedState createFromParcel(Parcel in, ClassLoader loader) {
-                        return new SavedState(in, loader);
-                    }
+        public static final Creator<SavedState> CREATOR = new ClassLoaderCreator<SavedState>() {
+            @Override
+            public SavedState createFromParcel(Parcel in, ClassLoader loader) {
+                return new SavedState(in, loader);
+            }
 
-                    @Override
-                    public SavedState[] newArray(int size) {
-                        return new SavedState[size];
-                    }
-                });
+            @Override
+            public SavedState createFromParcel(Parcel in) {
+                return new SavedState(in, null);
+            }
+
+            @Override
+            public SavedState[] newArray(int size) {
+                return new SavedState[size];
+            }
+        };
     }
 
     @Override
@@ -983,6 +1015,7 @@ public class TextInputLayout extends LinearLayout {
         if (mErrorShown) {
             ss.error = getError();
         }
+        ss.isPasswordToggledVisible = mPasswordToggledVisible;
         return ss;
     }
 
@@ -995,6 +1028,9 @@ public class TextInputLayout extends LinearLayout {
         SavedState ss = (SavedState) state;
         super.onRestoreInstanceState(ss.getSuperState());
         setError(ss.error);
+        if (ss.isPasswordToggledVisible) {
+            passwordVisibilityToggleRequested(true);
+        }
         requestLayout();
     }
 
@@ -1073,7 +1109,7 @@ public class TextInputLayout extends LinearLayout {
                 mPasswordToggleView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        passwordVisibilityToggleRequested();
+                        passwordVisibilityToggleRequested(false);
                     }
                 });
             }
@@ -1286,7 +1322,7 @@ public class TextInputLayout extends LinearLayout {
         applyPasswordToggleTint();
     }
 
-    void passwordVisibilityToggleRequested() {
+    private void passwordVisibilityToggleRequested(boolean shouldSkipAnimations) {
         if (mPasswordToggleEnabled) {
             // Store the current cursor position
             final int selection = mEditText.getSelectionEnd();
@@ -1300,6 +1336,9 @@ public class TextInputLayout extends LinearLayout {
             }
 
             mPasswordToggleView.setChecked(mPasswordToggledVisible);
+            if (shouldSkipAnimations) {
+                mPasswordToggleView.jumpDrawablesToCurrentState();
+            }
 
             // And restore the cursor position
             mEditText.setSelection(selection);
@@ -1420,13 +1459,13 @@ public class TextInputLayout extends LinearLayout {
             return;
         }
         if (mAnimator == null) {
-            mAnimator = ViewUtils.createAnimator();
+            mAnimator = new ValueAnimator();
             mAnimator.setInterpolator(AnimationUtils.LINEAR_INTERPOLATOR);
             mAnimator.setDuration(ANIMATION_DURATION);
-            mAnimator.addUpdateListener(new ValueAnimatorCompat.AnimatorUpdateListener() {
+            mAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                 @Override
-                public void onAnimationUpdate(ValueAnimatorCompat animator) {
-                    mCollapsingTextHelper.setExpansionFraction(animator.getAnimatedFloatValue());
+                public void onAnimationUpdate(ValueAnimator animator) {
+                    mCollapsingTextHelper.setExpansionFraction((float) animator.getAnimatedValue());
                 }
             });
         }

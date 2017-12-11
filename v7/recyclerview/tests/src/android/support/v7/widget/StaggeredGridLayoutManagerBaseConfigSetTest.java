@@ -16,7 +16,6 @@
 
 package android.support.v7.widget;
 
-
 import static android.support.v7.widget.LayoutState.LAYOUT_START;
 import static android.support.v7.widget.LinearLayoutManager.VERTICAL;
 import static android.support.v7.widget.StaggeredGridLayoutManager.HORIZONTAL;
@@ -36,9 +35,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.test.filters.FlakyTest;
 import android.support.test.filters.LargeTest;
-import android.support.test.filters.MediumTest;
 import android.support.test.filters.Suppress;
-import android.support.v4.view.ViewCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
@@ -54,7 +51,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RunWith(Parameterized.class)
-@MediumTest
+@LargeTest
 public class StaggeredGridLayoutManagerBaseConfigSetTest
         extends BaseStaggeredGridLayoutManagerTest {
 
@@ -766,9 +763,9 @@ public class StaggeredGridLayoutManagerBaseConfigSetTest
             @Override
             public void run() {
                 if (mConfig.mOrientation == HORIZONTAL) {
-                    ViewCompat.setTranslationX(vh.itemView, size * 2);
+                    vh.itemView.setTranslationX(size * 2);
                 } else {
-                    ViewCompat.setTranslationY(vh.itemView, size * 2);
+                    vh.itemView.setTranslationY(size * 2);
                 }
             }
         });
@@ -803,9 +800,9 @@ public class StaggeredGridLayoutManagerBaseConfigSetTest
             @Override
             public void run() {
                 if (mConfig.mOrientation == HORIZONTAL) {
-                    ViewCompat.setTranslationX(vh.itemView, -size * 2);
+                    vh.itemView.setTranslationX(-size * 2);
                 } else {
-                    ViewCompat.setTranslationY(vh.itemView, -size * 2);
+                    vh.itemView.setTranslationY(-size * 2);
                 }
             }
         });

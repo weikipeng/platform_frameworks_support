@@ -22,6 +22,7 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Handler;
+import android.support.annotation.RestrictTo;
 import android.support.v17.leanback.widget.Action;
 import android.support.v17.leanback.widget.ArrayObjectAdapter;
 import android.support.v17.leanback.widget.OnItemViewSelectedListener;
@@ -34,6 +35,7 @@ import android.view.SurfaceHolder;
 import android.view.View;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * This glue extends the {@link android.support.v17.leanback.media.PlaybackControlGlue} with a
@@ -49,7 +51,11 @@ import java.io.IOException;
  * </ul>
  *
  * @hide
+ * @deprecated Use {@link MediaPlayerAdapter} with {@link PlaybackTransportControlGlue} or
+ *             {@link PlaybackBannerControlGlue}.
  */
+@RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+@Deprecated
 public class MediaPlayerGlue extends PlaybackControlGlue implements
         OnItemViewSelectedListener {
 
@@ -71,7 +77,6 @@ public class MediaPlayerGlue extends PlaybackControlGlue implements
     private long mLastKeyDownEvent = 0L; // timestamp when the last DPAD_CENTER KEY_DOWN occurred
     private Uri mMediaSourceUri = null;
     private String mMediaSourcePath = null;
-    private PlayerCallback mPlayerCallback;
     private MediaPlayer.OnCompletionListener mOnCompletionListener;
     private String mArtist;
     private String mTitle;
@@ -124,8 +129,8 @@ public class MediaPlayerGlue extends PlaybackControlGlue implements
         mRepeatAction = new PlaybackControlsRow.RepeatAction(getContext());
         mThumbsDownAction = new PlaybackControlsRow.ThumbsDownAction(getContext());
         mThumbsUpAction = new PlaybackControlsRow.ThumbsUpAction(getContext());
-        mThumbsDownAction.setIndex(PlaybackControlsRow.ThumbsAction.OUTLINE);
-        mThumbsUpAction.setIndex(PlaybackControlsRow.ThumbsAction.OUTLINE);
+        mThumbsDownAction.setIndex(PlaybackControlsRow.ThumbsAction.INDEX_OUTLINE);
+        mThumbsUpAction.setIndex(PlaybackControlsRow.ThumbsAction.INDEX_OUTLINE);
     }
 
     @Override
@@ -138,27 +143,32 @@ public class MediaPlayerGlue extends PlaybackControlGlue implements
     }
 
     /**
-     * Sets the callback, which would tell the listener that video is ready to be played.
-     */
-    public void setPlayerCallback(PlayerCallback callback) {
-        this.mPlayerCallback = callback;
-    }
-
-    /**
      * Will reset the {@link MediaPlayer} and the glue such that a new file can be played. You are
      * not required to call this method before playing the first file. However you have to call it
      * before playing a second one.
      */
     public void reset() {
-        mInitialized = false;
+        changeToUnitialized();
         mPlayer.reset();
+    }
+
+    void changeToUnitialized() {
+        if (mInitialized) {
+            mInitialized = false;
+            List<PlayerCallback> callbacks = getPlayerCallbacks();
+            if (callbacks != null) {
+                for (PlayerCallback callback: callbacks) {
+                    callback.onPreparedStateChanged(MediaPlayerGlue.this);
+                }
+            }
+        }
     }
 
     /**
      * Release internal MediaPlayer. Should not use the object after call release().
      */
     public void release() {
-        mInitialized = false;
+        changeToUnitialized();
         mPlayer.release();
     }
 
@@ -210,20 +220,20 @@ public class MediaPlayerGlue extends PlaybackControlGlue implements
         // is incremented and the UI updated such that we can display the new state.
         super.onActionClicked(action);
         if (action instanceof PlaybackControlsRow.RepeatAction) {
-            mRepeatAction.nextIndex();
-        } else if (action instanceof PlaybackControlsRow.ThumbsUpAction) {
-            if (mThumbsUpAction.getIndex() == PlaybackControlsRow.ThumbsAction.SOLID) {
-                mThumbsUpAction.setIndex(PlaybackControlsRow.ThumbsAction.OUTLINE);
+            ((PlaybackControlsRow.RepeatAction) action).nextIndex();
+        } else if (action == mThumbsUpAction) {
+            if (mThumbsUpAction.getIndex() == PlaybackControlsRow.ThumbsAction.INDEX_SOLID) {
+                mThumbsUpAction.setIndex(PlaybackControlsRow.ThumbsAction.INDEX_OUTLINE);
             } else {
-                mThumbsUpAction.setIndex(PlaybackControlsRow.ThumbsAction.SOLID);
-                mThumbsDownAction.setIndex(PlaybackControlsRow.ThumbsAction.OUTLINE);
+                mThumbsUpAction.setIndex(PlaybackControlsRow.ThumbsAction.INDEX_SOLID);
+                mThumbsDownAction.setIndex(PlaybackControlsRow.ThumbsAction.INDEX_OUTLINE);
             }
-        } else if (action instanceof PlaybackControlsRow.ThumbsDownAction) {
-            if (mThumbsDownAction.getIndex() == PlaybackControlsRow.ThumbsAction.SOLID) {
-                mThumbsDownAction.setIndex(PlaybackControlsRow.ThumbsAction.OUTLINE);
+        } else if (action == mThumbsDownAction) {
+            if (mThumbsDownAction.getIndex() == PlaybackControlsRow.ThumbsAction.INDEX_SOLID) {
+                mThumbsDownAction.setIndex(PlaybackControlsRow.ThumbsAction.INDEX_OUTLINE);
             } else {
-                mThumbsDownAction.setIndex(PlaybackControlsRow.ThumbsAction.SOLID);
-                mThumbsUpAction.setIndex(PlaybackControlsRow.ThumbsAction.OUTLINE);
+                mThumbsDownAction.setIndex(PlaybackControlsRow.ThumbsAction.INDEX_SOLID);
+                mThumbsUpAction.setIndex(PlaybackControlsRow.ThumbsAction.INDEX_OUTLINE);
             }
         }
         onMetadataChanged();
@@ -267,6 +277,11 @@ public class MediaPlayerGlue extends PlaybackControlGlue implements
     @Override
     public boolean isMediaPlaying() {
         return mInitialized && mPlayer.isPlaying();
+    }
+
+    @Override
+    public boolean isPlaying() {
+        return isMediaPlaying();
     }
 
     @Override
@@ -426,8 +441,11 @@ public class MediaPlayerGlue extends PlaybackControlGlue implements
             @Override
             public void onPrepared(MediaPlayer mp) {
                 mInitialized = true;
-                if (mPlayerCallback != null) {
-                    mPlayerCallback.onReadyForPlayback();
+                List<PlayerCallback> callbacks = getPlayerCallbacks();
+                if (callbacks != null) {
+                    for (PlayerCallback callback: callbacks) {
+                        callback.onPreparedStateChanged(MediaPlayerGlue.this);
+                    }
                 }
             }
         });
@@ -472,7 +490,7 @@ public class MediaPlayerGlue extends PlaybackControlGlue implements
     }
 
     @Override
-    public boolean isReadyForPlayback() {
+    public boolean isPrepared() {
         return mInitialized;
     }
 

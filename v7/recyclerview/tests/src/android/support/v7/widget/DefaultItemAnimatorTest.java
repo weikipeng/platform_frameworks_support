@@ -21,7 +21,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import android.support.test.filters.MediumTest;
+import android.support.test.filters.LargeTest;
 import android.support.test.runner.AndroidJUnit4;
 import android.util.Log;
 import android.view.View;
@@ -40,7 +40,7 @@ import java.util.Set;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-@MediumTest
+@LargeTest
 @RunWith(AndroidJUnit4.class)
 public class DefaultItemAnimatorTest extends BaseRecyclerViewInstrumentationTest {
 
@@ -111,6 +111,7 @@ public class DefaultItemAnimatorTest extends BaseRecyclerViewInstrumentationTest
         mDummyParent = getActivity().getContainer();
     }
 
+    @Override
     void checkForMainThreadException() throws Throwable {
         if (mainThreadException != null) {
             throw mainThreadException;
@@ -385,6 +386,7 @@ public class DefaultItemAnimatorTest extends BaseRecyclerViewInstrumentationTest
         return vh;
     }
 
+    @Override
     void postExceptionToInstrumentation(Throwable t) {
         if (mainThreadException == null) {
             mainThreadException = t;

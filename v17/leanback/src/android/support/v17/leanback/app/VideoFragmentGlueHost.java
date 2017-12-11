@@ -1,3 +1,6 @@
+// CHECKSTYLE:OFF Generated code
+/* This file is auto-generated from VideoSupportFragmentGlueHost.java.  DO NOT MODIFY. */
+
 /*
  * Copyright (C) 2016 The Android Open Source Project
  *
@@ -40,4 +43,5 @@ public class VideoFragmentGlueHost extends PlaybackFragmentGlueHost
     public void setSurfaceHolderCallback(SurfaceHolder.Callback callback) {
         mFragment.setSurfaceHolderCallback(callback);
     }
+
 }

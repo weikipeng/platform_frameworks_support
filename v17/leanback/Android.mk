@@ -32,10 +32,8 @@ LOCAL_SRC_FILES := \
     $(call all-java-files-under, jbmr2) \
     $(call all-java-files-under, kitkat) \
     $(call all-java-files-under, api21) \
-    $(call all-java-files-under, api23) \
     $(call all-java-files-under, src)
 LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
-LOCAL_MANIFEST_FILE := AndroidManifest-make.xml
 LOCAL_SHARED_ANDROID_LIBRARIES := \
     android-support-v7-recyclerview \
     android-support-compat \
@@ -47,31 +45,3 @@ LOCAL_JAR_EXCLUDE_FILES := none
 LOCAL_JAVA_LANGUAGE_VERSION := 1.7
 LOCAL_AAPT_FLAGS := --add-javadoc-annotation doconly
 include $(BUILD_STATIC_JAVA_LIBRARY)
-
-# Documentation
-# ===========================================================
-include $(CLEAR_VARS)
-LOCAL_USE_AAPT2 := true
-LOCAL_MODULE := android-support-v17-leanback
-LOCAL_MODULE_CLASS := JAVA_LIBRARIES
-LOCAL_MODULE_TAGS := optional
-LOCAL_SDK_VERSION := $(SUPPORT_CURRENT_SDK_VERSION)
-LOCAL_SRC_FILES := \
-    $(call all-java-files-under, src) \
-    $(call all-html-files-under, src)
-LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
-LOCAL_JAVA_LIBRARIES := \
-    android-support-annotations \
-    android-support-v4 \
-    android-support-v7-recyclerview \
-    android-support-v17-leanback
-LOCAL_ADDITIONAL_JAVA_DIR := $(call intermediates-dir-for,JAVA_LIBRARIES,android-support-v17-leanback-res,,COMMON)/src
-LOCAL_IS_HOST_MODULE := false
-LOCAL_DROIDDOC_CUSTOM_TEMPLATE_DIR := build/tools/droiddoc/templates-sdk
-LOCAL_DROIDDOC_OPTIONS := \
-    -offlinemode \
-    -hdf android.whichdoc offline \
-    -federate Android http://developer.android.com \
-    -federationapi Android prebuilts/sdk/api/17.txt \
-    -hide 113
-include $(BUILD_DROIDDOC)

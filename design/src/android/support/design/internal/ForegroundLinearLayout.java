@@ -18,7 +18,6 @@ package android.support.design.internal;
 
 import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
@@ -84,6 +83,7 @@ public class ForegroundLinearLayout extends LinearLayoutCompat {
      * @return foreground gravity.
      * @see #setForegroundGravity(int)
      */
+    @Override
     public int getForegroundGravity() {
         return mForegroundGravity;
     }
@@ -94,6 +94,7 @@ public class ForegroundLinearLayout extends LinearLayoutCompat {
      * @param foregroundGravity See {@link android.view.Gravity}
      * @see #getForegroundGravity()
      */
+    @Override
     public void setForegroundGravity(int foregroundGravity) {
         if (mForegroundGravity != foregroundGravity) {
             if ((foregroundGravity & Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK) == 0) {
@@ -121,7 +122,6 @@ public class ForegroundLinearLayout extends LinearLayoutCompat {
     }
 
     @RequiresApi(11)
-    @TargetApi(11)
     @Override
     public void jumpDrawablesToCurrentState() {
         super.jumpDrawablesToCurrentState();
@@ -146,6 +146,7 @@ public class ForegroundLinearLayout extends LinearLayoutCompat {
      *
      * @param drawable The Drawable to be drawn on top of the children.
      */
+    @Override
     public void setForeground(Drawable drawable) {
         if (mForeground != drawable) {
             if (mForeground != null) {
@@ -179,6 +180,7 @@ public class ForegroundLinearLayout extends LinearLayoutCompat {
      *
      * @return A Drawable or null if no foreground was set.
      */
+    @Override
     public Drawable getForeground() {
         return mForeground;
     }
@@ -227,7 +229,6 @@ public class ForegroundLinearLayout extends LinearLayoutCompat {
     }
 
     @RequiresApi(21)
-    @TargetApi(21)
     @Override
     public void drawableHotspotChanged(float x, float y) {
         super.drawableHotspotChanged(x, y);

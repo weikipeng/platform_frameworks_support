@@ -16,12 +16,10 @@
 
 package android.support.v13.app;
 
-import android.annotation.TargetApi;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.os.Parcelable;
-import android.support.annotation.RequiresApi;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.PagerAdapter;
 import android.util.Log;
@@ -50,22 +48,20 @@ import android.view.ViewGroup;
  * <p>Here is an example implementation of a pager containing fragments of
  * lists:
  *
- * {@sample frameworks/support/samples/Support13Demos/src/com/example/android/supportv13/app/FragmentPagerSupport.java
+ * {@sample frameworks/support/samples/Support13Demos/src/main/java/com/example/android/supportv13/app/FragmentPagerSupport.java
  *      complete}
  *
  * <p>The <code>R.layout.fragment_pager</code> resource of the top-level fragment is:
  *
- * {@sample frameworks/support/samples/Support13Demos/res/layout/fragment_pager.xml
+ * {@sample frameworks/support/samples/Support13Demos/src/main/res/layout/fragment_pager.xml
  *      complete}
  *
  * <p>The <code>R.layout.fragment_pager_list</code> resource containing each
  * individual fragment's layout is:
  *
- * {@sample frameworks/support/samples/Support13Demos/res/layout/fragment_pager_list.xml
+ * {@sample frameworks/support/samples/Support13Demos/src/main/res/layout/fragment_pager_list.xml
  *      complete}
  */
-@RequiresApi(13)
-@TargetApi(13)
 public abstract class FragmentPagerAdapter extends PagerAdapter {
     private static final String TAG = "FragmentPagerAdapter";
     private static final boolean DEBUG = false;
@@ -91,6 +87,7 @@ public abstract class FragmentPagerAdapter extends PagerAdapter {
         }
     }
 
+    @SuppressWarnings("ReferenceEquality")
     @Override
     public Object instantiateItem(ViewGroup container, int position) {
         if (mCurTransaction == null) {
@@ -112,7 +109,7 @@ public abstract class FragmentPagerAdapter extends PagerAdapter {
                     makeFragmentName(container.getId(), itemId));
         }
         if (fragment != mCurrentPrimaryItem) {
-            FragmentCompat.setMenuVisibility(fragment, false);
+            fragment.setMenuVisibility(false);
             FragmentCompat.setUserVisibleHint(fragment, false);
         }
 
@@ -129,16 +126,17 @@ public abstract class FragmentPagerAdapter extends PagerAdapter {
         mCurTransaction.detach((Fragment)object);
     }
 
+    @SuppressWarnings("ReferenceEquality")
     @Override
     public void setPrimaryItem(ViewGroup container, int position, Object object) {
         Fragment fragment = (Fragment)object;
         if (fragment != mCurrentPrimaryItem) {
             if (mCurrentPrimaryItem != null) {
-                FragmentCompat.setMenuVisibility(mCurrentPrimaryItem, false);
+                mCurrentPrimaryItem.setMenuVisibility(false);
                 FragmentCompat.setUserVisibleHint(mCurrentPrimaryItem, false);
             }
             if (fragment != null) {
-                FragmentCompat.setMenuVisibility(fragment, true);
+                fragment.setMenuVisibility(true);
                 FragmentCompat.setUserVisibleHint(fragment, true);
             }
             mCurrentPrimaryItem = fragment;

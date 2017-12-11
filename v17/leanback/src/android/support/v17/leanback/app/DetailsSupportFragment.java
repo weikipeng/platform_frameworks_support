@@ -105,7 +105,7 @@ public class DetailsSupportFragment extends BaseSupportFragment {
     void switchToVideoBeforeVideoSupportFragmentCreated() {
         // if the video fragment is not ready: immediately fade out covering drawable,
         // hide title and mark mPendingFocusOnVideo and set focus on it later.
-        mDetailsBackgroundController.crossFadeBackgroundToVideo(true, true);
+        mDetailsBackgroundController.switchToVideoBeforeCreate();
         showTitle(false);
         mPendingFocusOnVideo = true;
         slideOutGridView();
@@ -171,7 +171,7 @@ public class DetailsSupportFragment extends BaseSupportFragment {
         final WeakReference<DetailsSupportFragment> mRef;
 
         WaitEnterTransitionTimeout(DetailsSupportFragment f) {
-            mRef = new WeakReference(f);
+            mRef = new WeakReference<>(f);
             f.getView().postDelayed(this, WAIT_ENTERTRANSITION_START);
         }
 
@@ -609,6 +609,9 @@ public class DetailsSupportFragment extends BaseSupportFragment {
      * @see DetailsSupportFragmentBackgroundController#onCreateVideoSupportFragment()
      */
     final Fragment findOrCreateVideoSupportFragment() {
+        if (mVideoSupportFragment != null) {
+            return mVideoSupportFragment;
+        }
         Fragment fragment = getChildFragmentManager()
                 .findFragmentById(R.id.video_surface_container);
         if (fragment == null && mDetailsBackgroundController != null) {
@@ -620,6 +623,7 @@ public class DetailsSupportFragment extends BaseSupportFragment {
                 // wait next cycle for Fragment view created so we can focus on it.
                 // This is a bit hack eventually we will do commitNow() which get view immediately.
                 getView().post(new Runnable() {
+                    @Override
                     public void run() {
                         if (getView() != null) {
                             switchToVideo();

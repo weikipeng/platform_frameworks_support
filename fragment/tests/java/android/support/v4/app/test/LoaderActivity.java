@@ -20,35 +20,22 @@ import android.content.Context;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.fragment.test.R;
-import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import java.util.concurrent.CountDownLatch;
-
-public class LoaderActivity extends FragmentActivity {
-    // These must be cleared after each test using clearState()
-    public static LoaderActivity sActivity;
-    public static CountDownLatch sResumed;
-
+public class LoaderActivity extends RecreatedActivity {
     public TextView textView;
     public TextView textViewB;
-
-    public static void clearState() {
-        sActivity = null;
-        sResumed = null;
-    }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        sActivity = this;
 
         setContentView(R.layout.fragment_a);
-        textView = (TextView) findViewById(R.id.textA);
+        textView = findViewById(R.id.textA);
         ViewGroup container = (ViewGroup) textView.getParent();
         textViewB = new TextView(this);
         textViewB.setId(R.id.textB);
@@ -59,9 +46,6 @@ public class LoaderActivity extends FragmentActivity {
     protected void onResume() {
         super.onResume();
         getSupportLoaderManager().initLoader(0, null, new TextLoaderCallback());
-        if (sResumed != null) {
-            sResumed.countDown();
-        }
     }
 
     class TextLoaderCallback implements LoaderManager.LoaderCallbacks<String> {

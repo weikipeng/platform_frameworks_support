@@ -13,6 +13,7 @@
  */
 package android.support.v17.leanback.app;
 
+import static android.support.v17.leanback.app.BrowseFragmentTestActivity.EXTRA_HEADERS_STATE;
 import static android.support.v17.leanback.app.BrowseFragmentTestActivity.EXTRA_LOAD_DATA_DELAY;
 import static android.support.v17.leanback.app.BrowseFragmentTestActivity.EXTRA_NUM_ROWS;
 import static android.support.v17.leanback.app.BrowseFragmentTestActivity.EXTRA_REPEAT_PER_ROW;
@@ -51,6 +52,8 @@ public class BrowseTestFragment extends BrowseFragment {
 
     int NUM_ROWS;
     int REPEAT_PER_ROW;
+    boolean mEntranceTransitionStarted;
+    boolean mEntranceTransitionEnded;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -75,7 +78,7 @@ public class BrowseTestFragment extends BrowseFragment {
         }
 
         setTitle("BrowseTestFragment");
-        setHeadersState(HEADERS_ENABLED);
+        setHeadersState(arguments.getInt(EXTRA_HEADERS_STATE, HEADERS_ENABLED));
 
         setOnSearchClickedListener(new View.OnClickListener() {
             @Override
@@ -122,6 +125,18 @@ public class BrowseTestFragment extends BrowseFragment {
         mRowsAdapter = new ArrayObjectAdapter(lrp);
 
         setAdapter(mRowsAdapter);
+    }
+
+    @Override
+    protected void onEntranceTransitionStart() {
+        super.onEntranceTransitionStart();
+        mEntranceTransitionStarted = true;
+    }
+
+    @Override
+    protected void onEntranceTransitionEnd() {
+        super.onEntranceTransitionEnd();
+        mEntranceTransitionEnded = true;
     }
 
     private void loadData() {

@@ -22,7 +22,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Instrumentation;
-import android.os.Build;
 import android.os.Parcelable;
 import android.support.annotation.AnimRes;
 import android.support.fragment.test.R;
@@ -235,7 +234,7 @@ public class FragmentAnimationTest {
                 .setCustomAnimations(ENTER, EXIT, POP_ENTER, POP_EXIT)
                 .add(R.id.fragmentContainer, fragment)
                 .addToBackStack(null)
-                .setAllowOptimization(true)
+                .setReorderingAllowed(true)
                 .commit();
         FragmentTestUtil.waitForExecution(mActivityRule);
 
@@ -260,7 +259,7 @@ public class FragmentAnimationTest {
                 .setCustomAnimations(ENTER, EXIT, POP_ENTER, POP_EXIT)
                 .remove(fragment)
                 .addToBackStack(null)
-                .setAllowOptimization(true)
+                .setReorderingAllowed(true)
                 .commit();
         FragmentTestUtil.waitForExecution(mActivityRule);
 
@@ -277,7 +276,7 @@ public class FragmentAnimationTest {
         fm.beginTransaction()
                 .add(R.id.fragmentContainer, fragment1)
                 .addToBackStack(null)
-                .setAllowOptimization(true)
+                .setReorderingAllowed(true)
                 .commit();
         FragmentTestUtil.waitForExecution(mActivityRule);
 
@@ -288,7 +287,7 @@ public class FragmentAnimationTest {
                 .setCustomAnimations(ENTER, EXIT, POP_ENTER, POP_EXIT)
                 .replace(R.id.fragmentContainer, fragment2)
                 .addToBackStack(null)
-                .setAllowOptimization(true)
+                .setReorderingAllowed(true)
                 .commit();
 
         FragmentTestUtil.waitForExecution(mActivityRule);
@@ -296,9 +295,7 @@ public class FragmentAnimationTest {
         assertPostponed(fragment2, 0);
         assertNotNull(fragment1.getView());
         assertEquals(View.VISIBLE, fragment1.getView().getVisibility());
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            assertEquals(1f, fragment1.getView().getAlpha(), 0f);
-        }
+        assertEquals(1f, fragment1.getView().getAlpha(), 0f);
         assertTrue(ViewCompat.isAttachedToWindow(fragment1.getView()));
 
         fragment2.startPostponedEnterTransition();
@@ -315,7 +312,7 @@ public class FragmentAnimationTest {
         final AnimatorFragment fragment1 = new AnimatorFragment();
         fm.beginTransaction()
                 .add(R.id.fragmentContainer, fragment1)
-                .setAllowOptimization(true)
+                .setReorderingAllowed(true)
                 .commit();
         FragmentTestUtil.waitForExecution(mActivityRule);
         assertEquals(0, fragment1.numAnimators);
@@ -327,7 +324,7 @@ public class FragmentAnimationTest {
                 .setCustomAnimations(ENTER, EXIT, POP_ENTER, POP_EXIT)
                 .replace(R.id.fragmentContainer, fragment2)
                 .addToBackStack(null)
-                .setAllowOptimization(true)
+                .setReorderingAllowed(true)
                 .commit();
 
         FragmentTestUtil.waitForExecution(mActivityRule);
@@ -339,9 +336,7 @@ public class FragmentAnimationTest {
 
         assertNotNull(fragment1.getView());
         assertEquals(View.VISIBLE, fragment1.getView().getVisibility());
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            assertEquals(1f, fragment1.getView().getAlpha(), 0f);
-        }
+        assertEquals(1f, fragment1.getView().getAlpha(), 0f);
         assertTrue(ViewCompat.isAttachedToWindow(fragment1.getView()));
         assertTrue(fragment1.isAdded());
 
@@ -413,6 +408,40 @@ public class FragmentAnimationTest {
         assertNotNull(fragment1restored.getView());
     }
 
+    // When an animation is running on a Fragment's View, the view shouldn't be
+    // prevented from being removed. There's no way to directly test this, so we have to
+    // test to see if the animation is still running.
+    @Test
+    public void clearAnimations() throws Throwable {
+        final FragmentManager fm = mActivityRule.getActivity().getSupportFragmentManager();
+
+        final StrictViewFragment fragment1 = new StrictViewFragment();
+        fm.beginTransaction()
+                .add(R.id.fragmentContainer, fragment1)
+                .setReorderingAllowed(true)
+                .commit();
+        FragmentTestUtil.waitForExecution(mActivityRule);
+
+        final View fragmentView = fragment1.getView();
+
+        final TranslateAnimation xAnimation = new TranslateAnimation(0, 1000, 0, 0);
+        mActivityRule.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                fragmentView.startAnimation(xAnimation);
+            }
+        });
+
+        FragmentTestUtil.waitForExecution(mActivityRule);
+        FragmentTestUtil.popBackStackImmediate(mActivityRule);
+        mActivityRule.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                assertNull(fragmentView.getAnimation());
+            }
+        });
+    }
+
     private void assertEnterPopExit(AnimatorFragment fragment) throws Throwable {
         assertFragmentAnimation(fragment, 1, true, ENTER);
 
@@ -463,12 +492,8 @@ public class FragmentAnimationTest {
     private void assertPostponed(AnimatorFragment fragment, int expectedAnimators)
             throws InterruptedException {
         assertTrue(fragment.mOnCreateViewCalled);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB) {
-            assertEquals(View.INVISIBLE, fragment.getView().getVisibility());
-        } else {
-            assertEquals(View.VISIBLE, fragment.getView().getVisibility());
-            assertEquals(0f, fragment.getView().getAlpha(), 0f);
-        }
+        assertEquals(View.VISIBLE, fragment.getView().getVisibility());
+        assertEquals(0f, fragment.getView().getAlpha(), 0f);
         assertEquals(expectedAnimators, fragment.numAnimators);
     }
 

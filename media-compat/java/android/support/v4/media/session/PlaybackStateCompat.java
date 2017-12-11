@@ -50,7 +50,7 @@ public final class PlaybackStateCompat implements Parcelable {
             ACTION_SEEK_TO, ACTION_PLAY_PAUSE, ACTION_PLAY_FROM_MEDIA_ID, ACTION_PLAY_FROM_SEARCH,
             ACTION_SKIP_TO_QUEUE_ITEM, ACTION_PLAY_FROM_URI, ACTION_PREPARE,
             ACTION_PREPARE_FROM_MEDIA_ID, ACTION_PREPARE_FROM_SEARCH, ACTION_PREPARE_FROM_URI,
-            ACTION_SET_REPEAT_MODE, ACTION_SET_SHUFFLE_MODE_ENABLED, ACTION_SET_CAPTIONING_ENABLED})
+            ACTION_SET_REPEAT_MODE, ACTION_SET_SHUFFLE_MODE, ACTION_SET_CAPTIONING_ENABLED})
     @Retention(RetentionPolicy.SOURCE)
     public @interface Actions {}
 
@@ -200,7 +200,9 @@ public final class PlaybackStateCompat implements Parcelable {
      * Indicates this session supports the set shuffle mode enabled command.
      *
      * @see Builder#setActions(long)
+     * @deprecated Use {@link #ACTION_SET_SHUFFLE_MODE} instead.
      */
+    @Deprecated
     public static final long ACTION_SET_SHUFFLE_MODE_ENABLED = 1 << 19;
 
     /**
@@ -209,6 +211,13 @@ public final class PlaybackStateCompat implements Parcelable {
      * @see Builder#setActions(long)
      */
     public static final long ACTION_SET_CAPTIONING_ENABLED = 1 << 20;
+
+    /**
+     * Indicates this session supports the set shuffle mode command.
+     *
+     * @see Builder#setActions(long)
+     */
+    public static final long ACTION_SET_SHUFFLE_MODE = 1 << 21;
 
     /**
      * @hide
@@ -327,6 +336,81 @@ public final class PlaybackStateCompat implements Parcelable {
      * @hide
      */
     @RestrictTo(LIBRARY_GROUP)
+    @IntDef({REPEAT_MODE_INVALID, REPEAT_MODE_NONE, REPEAT_MODE_ONE, REPEAT_MODE_ALL,
+            REPEAT_MODE_GROUP})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface RepeatMode {}
+
+    /**
+     * {@link MediaControllerCompat.TransportControls#getRepeatMode} returns this value
+     * when the session is not ready for providing its repeat mode.
+     */
+    public static final int REPEAT_MODE_INVALID = -1;
+
+    /**
+     * Use this value with {@link MediaControllerCompat.TransportControls#setRepeatMode}
+     * to indicate that the playback will be stopped at the end of the playing media list.
+     */
+    public static final int REPEAT_MODE_NONE = 0;
+
+    /**
+     * Use this value with {@link MediaControllerCompat.TransportControls#setRepeatMode}
+     * to indicate that the playback of the current playing media item will be repeated.
+     */
+    public static final int REPEAT_MODE_ONE = 1;
+
+    /**
+     * Use this value with {@link MediaControllerCompat.TransportControls#setRepeatMode}
+     * to indicate that the playback of the playing media list will be repeated.
+     */
+    public static final int REPEAT_MODE_ALL = 2;
+
+    /**
+     * Use this value with {@link MediaControllerCompat.TransportControls#setRepeatMode}
+     * to indicate that the playback of the playing media group will be repeated.
+     * A group is a logical block of media items which is specified in the section 5.7 of the
+     * Bluetooth AVRCP 1.6.
+     */
+    public static final int REPEAT_MODE_GROUP = 3;
+
+    /**
+     * @hide
+     */
+    @RestrictTo(LIBRARY_GROUP)
+    @IntDef({SHUFFLE_MODE_INVALID, SHUFFLE_MODE_NONE, SHUFFLE_MODE_ALL, SHUFFLE_MODE_GROUP})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface ShuffleMode {}
+
+    /**
+     * {@link MediaControllerCompat.TransportControls#getShuffleMode} returns this value
+     * when the session is not ready for providing its shuffle mode.
+     */
+    public static final int SHUFFLE_MODE_INVALID = -1;
+
+    /**
+     * Use this value with {@link MediaControllerCompat.TransportControls#setShuffleMode}
+     * to indicate that the media list will be played in order.
+     */
+    public static final int SHUFFLE_MODE_NONE = 0;
+
+    /**
+     * Use this value with {@link MediaControllerCompat.TransportControls#setShuffleMode}
+     * to indicate that the media list will be played in shuffled order.
+     */
+    public static final int SHUFFLE_MODE_ALL = 1;
+
+    /**
+     * Use this value with {@link MediaControllerCompat.TransportControls#setShuffleMode}
+     * to indicate that the media group will be played in shuffled order.
+     * A group is a logical block of media items which is specified in the section 5.7 of the
+     * Bluetooth AVRCP 1.6.
+     */
+    public static final int SHUFFLE_MODE_GROUP = 2;
+
+    /**
+     * @hide
+     */
+    @RestrictTo(LIBRARY_GROUP)
     @IntDef({ERROR_CODE_UNKNOWN_ERROR, ERROR_CODE_APP_ERROR, ERROR_CODE_NOT_SUPPORTED,
             ERROR_CODE_AUTHENTICATION_EXPIRED, ERROR_CODE_PREMIUM_ACCOUNT_REQUIRED,
             ERROR_CODE_CONCURRENT_STREAM_LIMIT, ERROR_CODE_PARENTAL_CONTROL_RESTRICTED,
@@ -407,31 +491,6 @@ public final class PlaybackStateCompat implements Parcelable {
      * The error code should be set when entering {@link #STATE_ERROR}.
      */
     public static final int ERROR_CODE_END_OF_QUEUE = 11;
-
-    /**
-     * @hide
-     */
-    @IntDef({REPEAT_MODE_NONE, REPEAT_MODE_ONE, REPEAT_MODE_ALL})
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface RepeatMode {}
-
-    /**
-     * Use this value with {@link MediaControllerCompat.TransportControls#setRepeatMode}
-     * to indicate that the playback will be stopped at the end of the playing media list.
-     */
-    public static final int REPEAT_MODE_NONE = 0;
-
-    /**
-     * Use this value with {@link MediaControllerCompat.TransportControls#setRepeatMode}
-     * to indicate that the playback of the current playing media item will be repeated.
-     */
-    public static final int REPEAT_MODE_ONE = 1;
-
-    /**
-     * Use this value with {@link MediaControllerCompat.TransportControls#setRepeatMode}
-     * to indicate that the playback of the playing media list will be repeated.
-     */
-    public static final int REPEAT_MODE_ALL = 2;
 
     // KeyEvent constants only available on API 11+
     private static final int KEYCODE_MEDIA_PAUSE = 127;
@@ -631,7 +690,7 @@ public final class PlaybackStateCompat implements Parcelable {
      * <li> {@link PlaybackStateCompat#ACTION_PREPARE_FROM_SEARCH}</li>
      * <li> {@link PlaybackStateCompat#ACTION_PREPARE_FROM_URI}</li>
      * <li> {@link PlaybackStateCompat#ACTION_SET_REPEAT_MODE}</li>
-     * <li> {@link PlaybackStateCompat#ACTION_SET_SHUFFLE_MODE_ENABLED}</li>
+     * <li> {@link PlaybackStateCompat#ACTION_SET_SHUFFLE_MODE}</li>
      * <li> {@link PlaybackStateCompat#ACTION_SET_CAPTIONING_ENABLED}</li>
      * </ul>
      */
@@ -721,35 +780,38 @@ public final class PlaybackStateCompat implements Parcelable {
      * @return An equivalent {@link PlaybackStateCompat} object, or null if none.
      */
     public static PlaybackStateCompat fromPlaybackState(Object stateObj) {
-        if (stateObj == null || Build.VERSION.SDK_INT < 21) {
+        if (stateObj != null && Build.VERSION.SDK_INT >= 21) {
+            List<Object> customActionObjs = PlaybackStateCompatApi21.getCustomActions(stateObj);
+            List<PlaybackStateCompat.CustomAction> customActions = null;
+            if (customActionObjs != null) {
+                customActions = new ArrayList<>(customActionObjs.size());
+                for (Object customActionObj : customActionObjs) {
+                    customActions.add(CustomAction.fromCustomAction(customActionObj));
+                }
+            }
+            Bundle extras;
+            if (Build.VERSION.SDK_INT >= 22) {
+                extras = PlaybackStateCompatApi22.getExtras(stateObj);
+            } else {
+                extras = null;
+            }
+            PlaybackStateCompat state = new PlaybackStateCompat(
+                    PlaybackStateCompatApi21.getState(stateObj),
+                    PlaybackStateCompatApi21.getPosition(stateObj),
+                    PlaybackStateCompatApi21.getBufferedPosition(stateObj),
+                    PlaybackStateCompatApi21.getPlaybackSpeed(stateObj),
+                    PlaybackStateCompatApi21.getActions(stateObj),
+                    ERROR_CODE_UNKNOWN_ERROR,
+                    PlaybackStateCompatApi21.getErrorMessage(stateObj),
+                    PlaybackStateCompatApi21.getLastPositionUpdateTime(stateObj),
+                    customActions,
+                    PlaybackStateCompatApi21.getActiveQueueItemId(stateObj),
+                    extras);
+            state.mStateObj = stateObj;
+            return state;
+        } else {
             return null;
         }
-
-        List<Object> customActionObjs = PlaybackStateCompatApi21.getCustomActions(stateObj);
-        List<PlaybackStateCompat.CustomAction> customActions = null;
-        if (customActionObjs != null) {
-            customActions = new ArrayList<>(customActionObjs.size());
-            for (Object customActionObj : customActionObjs) {
-                customActions.add(CustomAction.fromCustomAction(customActionObj));
-            }
-        }
-        Bundle extras = Build.VERSION.SDK_INT >= 22
-                ? PlaybackStateCompatApi22.getExtras(stateObj)
-                : null;
-        PlaybackStateCompat state = new PlaybackStateCompat(
-                PlaybackStateCompatApi21.getState(stateObj),
-                PlaybackStateCompatApi21.getPosition(stateObj),
-                PlaybackStateCompatApi21.getBufferedPosition(stateObj),
-                PlaybackStateCompatApi21.getPlaybackSpeed(stateObj),
-                PlaybackStateCompatApi21.getActions(stateObj),
-                ERROR_CODE_UNKNOWN_ERROR,
-                PlaybackStateCompatApi21.getErrorMessage(stateObj),
-                PlaybackStateCompatApi21.getLastPositionUpdateTime(stateObj),
-                customActions,
-                PlaybackStateCompatApi21.getActiveQueueItemId(stateObj),
-                extras);
-        state.mStateObj = stateObj;
-        return state;
     }
 
     /**
@@ -761,25 +823,25 @@ public final class PlaybackStateCompat implements Parcelable {
      * @return An equivalent {@link android.media.session.PlaybackState} object, or null if none.
      */
     public Object getPlaybackState() {
-        if (mStateObj != null || Build.VERSION.SDK_INT < 21) {
-            return mStateObj;
-        }
-
-        List<Object> customActions = null;
-        if (mCustomActions != null) {
-            customActions = new ArrayList<>(mCustomActions.size());
-            for (PlaybackStateCompat.CustomAction customAction : mCustomActions) {
-                customActions.add(customAction.getCustomAction());
+        if (mStateObj == null && Build.VERSION.SDK_INT >= 21) {
+            List<Object> customActions = null;
+            if (mCustomActions != null) {
+                customActions = new ArrayList<>(mCustomActions.size());
+                for (PlaybackStateCompat.CustomAction customAction : mCustomActions) {
+                    customActions.add(customAction.getCustomAction());
+                }
             }
-        }
-        if (Build.VERSION.SDK_INT >= 22) {
-            mStateObj = PlaybackStateCompatApi22.newInstance(mState, mPosition, mBufferedPosition,
-                    mSpeed, mActions, mErrorMessage, mUpdateTime,
-                    customActions, mActiveItemId, mExtras);
-        } else {
-            mStateObj = PlaybackStateCompatApi21.newInstance(mState, mPosition, mBufferedPosition,
-                    mSpeed, mActions, mErrorMessage, mUpdateTime,
-                    customActions, mActiveItemId);
+            if (Build.VERSION.SDK_INT >= 22) {
+                mStateObj = PlaybackStateCompatApi22.newInstance(mState, mPosition,
+                        mBufferedPosition,
+                        mSpeed, mActions, mErrorMessage, mUpdateTime,
+                        customActions, mActiveItemId, mExtras);
+            } else {
+                //noinspection AndroidLintNewApi - NewApi lint fails to handle nested checks.
+                mStateObj = PlaybackStateCompatApi21.newInstance(mState, mPosition,
+                        mBufferedPosition, mSpeed, mActions, mErrorMessage, mUpdateTime,
+                        customActions, mActiveItemId);
+            }
         }
         return mStateObj;
     }
@@ -1172,7 +1234,7 @@ public final class PlaybackStateCompat implements Parcelable {
          * <li> {@link PlaybackStateCompat#ACTION_PREPARE_FROM_SEARCH}</li>
          * <li> {@link PlaybackStateCompat#ACTION_PREPARE_FROM_URI}</li>
          * <li> {@link PlaybackStateCompat#ACTION_SET_REPEAT_MODE}</li>
-         * <li> {@link PlaybackStateCompat#ACTION_SET_SHUFFLE_MODE_ENABLED}</li>
+         * <li> {@link PlaybackStateCompat#ACTION_SET_SHUFFLE_MODE}</li>
          * <li> {@link PlaybackStateCompat#ACTION_SET_CAPTIONING_ENABLED}</li>
          * </ul>
          *

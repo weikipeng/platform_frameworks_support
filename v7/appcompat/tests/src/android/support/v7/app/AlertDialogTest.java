@@ -40,8 +40,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -60,6 +60,7 @@ import android.support.test.espresso.ViewInteraction;
 import android.support.test.filters.LargeTest;
 import android.support.test.filters.MediumTest;
 import android.support.test.filters.SmallTest;
+import android.support.test.rule.ActivityTestRule;
 import android.support.v7.appcompat.test.R;
 import android.support.v7.testutils.TestUtilsMatchers;
 import android.text.TextUtils;
@@ -76,6 +77,7 @@ import android.widget.ListView;
 import org.hamcrest.Matcher;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -90,18 +92,21 @@ import org.mockito.ArgumentCaptor;
  *     <li>Testing <code>setIcon</code> API assumes that the icon is displayed by a separate
  *     <code>ImageView</code> which is a sibling of a title view.</li>
  *     <li>Testing <code>setMultiChoiceItems</code> API assumes that each item in the list
- *     is rendered by a single <code></code>CheckedTextView</code>.</li>
+ *     is rendered by a single <code>CheckedTextView</code>.</li>
  *     <li>Testing <code>setSingleChoiceItems</code> API assumes that each item in the list
- *     is rendered by a single <code></code>CheckedTextView</code>.</li>
+ *     is rendered by a single <code>CheckedTextView</code>.</li>
  * </ul>
  */
-public class AlertDialogTest extends BaseInstrumentationTestCase<AlertDialogTestActivity> {
+public class AlertDialogTest {
+    @Rule
+    public final ActivityTestRule<AlertDialogTestActivity> mActivityTestRule;
+
     private Button mButton;
 
     private AlertDialog mAlertDialog;
 
     public AlertDialogTest() {
-        super(AlertDialogTestActivity.class);
+        mActivityTestRule = new ActivityTestRule<>(AlertDialogTestActivity.class);
     }
 
     @Before
@@ -111,9 +116,14 @@ public class AlertDialogTest extends BaseInstrumentationTestCase<AlertDialogTest
     }
 
     @After
-    public void tearDown() {
-        if (mAlertDialog != null) {
-            mAlertDialog.dismiss();
+    public void tearDown() throws Throwable {
+        if ((mAlertDialog != null) && mAlertDialog.isShowing()) {
+            mActivityTestRule.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mAlertDialog.hide();
+                }
+            });
         }
     }
 
@@ -692,7 +702,7 @@ public class AlertDialogTest extends BaseInstrumentationTestCase<AlertDialogTest
     }
 
     @Test
-    @MediumTest
+    @LargeTest
     public void testSingleChoiceItemsFromRuntimeArray() {
         final String[] content = new String[] { "Alice", "Bob", "Charlie", "Delta" };
         final DialogInterface.OnClickListener mockClickListener =
@@ -706,7 +716,7 @@ public class AlertDialogTest extends BaseInstrumentationTestCase<AlertDialogTest
     }
 
     @Test
-    @MediumTest
+    @LargeTest
     public void testSingleChoiceItemsFromResourcesArray() {
         final DialogInterface.OnClickListener mockClickListener =
                 mock(DialogInterface.OnClickListener.class);
@@ -1004,7 +1014,7 @@ public class AlertDialogTest extends BaseInstrumentationTestCase<AlertDialogTest
         // Verify that a Message with expected 'what' field has been posted on our mock handler
         ArgumentCaptor<Message> messageArgumentCaptor = ArgumentCaptor.forClass(Message.class);
         verify(messageHandler, times(1)).sendMessageDelayed(
-                messageArgumentCaptor.capture(), anyInt());
+                messageArgumentCaptor.capture(), anyLong());
         assertEquals("Button clicked", whichButtonClicked, messageArgumentCaptor.getValue().what);
         // Verify that the dialog is no longer showing
         assertFalse("Dialog is not showing", mAlertDialog.isShowing());

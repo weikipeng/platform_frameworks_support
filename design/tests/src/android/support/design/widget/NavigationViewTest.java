@@ -61,6 +61,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import android.annotation.TargetApi;
 import android.content.res.Resources;
 import android.os.Build;
 import android.os.Parcelable;
@@ -68,7 +69,7 @@ import android.support.annotation.ColorInt;
 import android.support.annotation.IdRes;
 import android.support.design.test.R;
 import android.support.design.testutils.TestDrawable;
-import android.support.test.filters.MediumTest;
+import android.support.test.filters.LargeTest;
 import android.support.test.filters.SdkSuppress;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v4.view.GravityCompat;
@@ -89,7 +90,7 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-@MediumTest
+@LargeTest
 public class NavigationViewTest
         extends BaseInstrumentationTestCase<NavigationViewActivity> {
     private static final int[] MENU_CONTENT_ITEM_IDS = { R.id.destination_home,
@@ -406,6 +407,7 @@ public class NavigationViewTest
     }
 
     @SdkSuppress(minSdkVersion = 11)
+    @TargetApi(11)
     @Test
     public void testHeaderState() {
         // Open our drawer
@@ -445,6 +447,7 @@ public class NavigationViewTest
     }
 
     @SdkSuppress(minSdkVersion = 11)
+    @TargetApi(11)
     @Test
     public void testActionViewState() {
         // Open our drawer

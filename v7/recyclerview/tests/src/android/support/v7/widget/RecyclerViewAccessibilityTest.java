@@ -24,9 +24,7 @@ import static org.junit.Assert.assertTrue;
 import android.os.Build;
 import android.support.test.filters.MediumTest;
 import android.support.v4.view.AccessibilityDelegateCompat;
-import android.support.v4.view.accessibility.AccessibilityEventCompat;
 import android.support.v4.view.accessibility.AccessibilityNodeInfoCompat;
-import android.support.v4.view.accessibility.AccessibilityRecordCompat;
 import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 
@@ -75,13 +73,13 @@ public class RecyclerViewAccessibilityTest extends BaseRecyclerViewInstrumentati
     @Test
     public void onInitializeAccessibilityNodeInfoTest() throws Throwable {
         final RecyclerView recyclerView = new RecyclerView(getActivity()) {
-            //@Override
+            @Override
             public boolean canScrollHorizontally(int direction) {
                 return direction < 0 && mHorizontalScrollBefore ||
                         direction > 0 && mHorizontalScrollAfter;
             }
 
-            //@Override
+            @Override
             public boolean canScrollVertically(int direction) {
                 return direction < 0 && mVerticalScrollBefore ||
                         direction > 0 && mVerticalScrollAfter;
@@ -172,11 +170,9 @@ public class RecyclerViewAccessibilityTest extends BaseRecyclerViewInstrumentati
                 delegateCompat.onInitializeAccessibilityEvent(recyclerView, event);
             }
         });
-        final AccessibilityRecordCompat record = AccessibilityEventCompat
-                .asRecord(event);
-        assertEquals(record.isScrollable(), mVerticalScrollAfter || mHorizontalScrollAfter ||
-                mVerticalScrollBefore || mHorizontalScrollBefore);
-        assertEquals(record.getItemCount(), adapter.getItemCount());
+        assertEquals(event.isScrollable(), mVerticalScrollAfter || mHorizontalScrollAfter
+                || mVerticalScrollBefore || mHorizontalScrollBefore);
+        assertEquals(event.getItemCount(), adapter.getItemCount());
 
         getInstrumentation().waitForIdleSync();
         if (SUPPORTS_COLLECTION_INFO) {
@@ -240,11 +236,13 @@ public class RecyclerViewAccessibilityTest extends BaseRecyclerViewInstrumentati
     public void ignoreAccessibilityIfAdapterHasChanged() throws Throwable {
         final RecyclerView recyclerView = new RecyclerView(getActivity()) {
             //@Override
+            @Override
             public boolean canScrollHorizontally(int direction) {
                 return true;
             }
 
             //@Override
+            @Override
             public boolean canScrollVertically(int direction) {
                 return true;
             }

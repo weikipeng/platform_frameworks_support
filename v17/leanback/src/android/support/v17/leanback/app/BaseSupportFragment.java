@@ -1,6 +1,3 @@
-// CHECKSTYLE:OFF Generated code
-/* This file is auto-generated from BaseFragment.java.  DO NOT MODIFY. */
-
 /*
  * Copyright (C) 2014 The Android Open Source Project
  *
@@ -16,7 +13,10 @@
  */
 package android.support.v17.leanback.app;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v17.leanback.transition.TransitionHelper;
 import android.support.v17.leanback.transition.TransitionListener;
 import android.support.v17.leanback.util.StateMachine;
@@ -27,10 +27,10 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 
 /**
- * @hide
+ * Base class for leanback Fragments. This class is not intended to be subclassed by apps.
  */
 @SuppressWarnings("FragmentNotInstantiable")
-class BaseSupportFragment extends BrandedSupportFragment {
+public class BaseSupportFragment extends BrandedSupportFragment {
 
     /**
      * The start state for all
@@ -133,6 +133,7 @@ class BaseSupportFragment extends BrandedSupportFragment {
     Object mEntranceTransition;
     final ProgressBarManager mProgressBarManager = new ProgressBarManager();
 
+    @SuppressLint("ValidFragment")
     BaseSupportFragment() {
     }
 
@@ -178,7 +179,7 @@ class BaseSupportFragment extends BrandedSupportFragment {
     }
 
     @Override
-    public void onViewCreated(View view, Bundle savedInstanceState) {
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         mStateMachine.fireEvent(EVT_ON_CREATEVIEW);
     }
@@ -268,6 +269,10 @@ class BaseSupportFragment extends BrandedSupportFragment {
     void onExecuteEntranceTransition() {
         // wait till views get their initial position before start transition
         final View view = getView();
+        if (view == null) {
+            // fragment view destroyed, transition not needed
+            return;
+        }
         view.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
@@ -305,6 +310,7 @@ class BaseSupportFragment extends BrandedSupportFragment {
 
     /**
      * Returns the {@link ProgressBarManager}.
+     * @return The {@link ProgressBarManager}.
      */
     public final ProgressBarManager getProgressBarManager() {
         return mProgressBarManager;

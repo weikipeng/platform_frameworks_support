@@ -21,6 +21,7 @@ package android.support.v17.leanback.app;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.timeout;
@@ -28,7 +29,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import android.os.Bundle;
-import android.support.test.filters.MediumTest;
+import android.support.test.filters.LargeTest;
 import android.support.test.runner.AndroidJUnit4;
 import android.support.v17.leanback.testutils.PollingCheck;
 import android.support.v17.leanback.widget.GuidedAction;
@@ -47,10 +48,7 @@ import org.mockito.stubbing.Answer;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @hide from javadoc
- */
-@MediumTest
+@LargeTest
 @RunWith(AndroidJUnit4.class)
 public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTestBase {
 
@@ -62,13 +60,15 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         final String secondFragmentName = generateMethodTestName("second");
         GuidedStepTestSupportFragment.Provider first = mockProvider(firstFragmentName);
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 List actions = (List) invocation.getArguments()[0];
                 actions.add(new GuidedAction.Builder().id(1000).title("OK").build());
                 return null;
             }
-        }).when(first).onCreateActions(any(List.class), any(Bundle.class));
+        }).when(first).onCreateActions(any(List.class), nullable(Bundle.class));
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 GuidedAction action = (GuidedAction) invocation.getArguments()[0];
                 GuidedStepTestSupportFragment.Provider obj = (GuidedStepTestSupportFragment.Provider)
@@ -84,13 +84,13 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         GuidedStepTestSupportFragment.Provider second = mockProvider(secondFragmentName);
 
         GuidedStepSupportFragmentTestActivity activity = launchTestActivity(firstFragmentName);
-        verify(first, times(1)).onCreate(any(Bundle.class));
-        verify(first, times(1)).onCreateGuidance(any(Bundle.class));
-        verify(first, times(1)).onCreateActions(any(List.class), any(Bundle.class));
-        verify(first, times(1)).onCreateButtonActions(any(List.class), any(Bundle.class));
+        verify(first, times(1)).onCreate(nullable(Bundle.class));
+        verify(first, times(1)).onCreateGuidance(nullable(Bundle.class));
+        verify(first, times(1)).onCreateActions(any(List.class), nullable(Bundle.class));
+        verify(first, times(1)).onCreateButtonActions(any(List.class), nullable(Bundle.class));
         verify(first, times(1)).onCreateView(any(LayoutInflater.class), any(ViewGroup.class),
-                any(Bundle.class), any(View.class));
-        verify(first, times(1)).onViewStateRestored(any(Bundle.class));
+                nullable(Bundle.class), any(View.class));
+        verify(first, times(1)).onViewStateRestored(nullable(Bundle.class));
         verify(first, times(1)).onStart();
         verify(first, times(1)).onResume();
 
@@ -101,13 +101,13 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         verify(first, times(1)).onPause();
         verify(first, times(1)).onStop();
         verify(first, times(1)).onDestroyView();
-        verify(second, times(1)).onCreate(any(Bundle.class));
-        verify(second, times(1)).onCreateGuidance(any(Bundle.class));
-        verify(second, times(1)).onCreateActions(any(List.class), any(Bundle.class));
-        verify(second, times(1)).onCreateButtonActions(any(List.class), any(Bundle.class));
-        verify(second, times(1)).onCreateView(any(LayoutInflater.class), any(ViewGroup.class),
-                any(Bundle.class), any(View.class));
-        verify(second, times(1)).onViewStateRestored(any(Bundle.class));
+        verify(second, times(1)).onCreate(nullable(Bundle.class));
+        verify(second, times(1)).onCreateGuidance(nullable(Bundle.class));
+        verify(second, times(1)).onCreateActions(any(List.class), nullable(Bundle.class));
+        verify(second, times(1)).onCreateButtonActions(any(List.class), nullable(Bundle.class));
+        verify(second, times(1)).onCreateView(any(LayoutInflater.class), nullable(ViewGroup.class),
+                nullable(Bundle.class), any(View.class));
+        verify(second, times(1)).onViewStateRestored(nullable(Bundle.class));
         verify(second, times(1)).onStart();
         verify(second, times(1)).onResume();
 
@@ -118,10 +118,10 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         verify(second, times(1)).onStop();
         verify(second, times(1)).onDestroyView();
         verify(second, times(1)).onDestroy();
-        verify(first, times(1)).onCreateActions(any(List.class), any(Bundle.class));
+        verify(first, times(1)).onCreateActions(any(List.class), nullable(Bundle.class));
         verify(first, times(2)).onCreateView(any(LayoutInflater.class), any(ViewGroup.class),
-                any(Bundle.class), any(View.class));
-        verify(first, times(2)).onViewStateRestored(any(Bundle.class));
+                nullable(Bundle.class), any(View.class));
+        verify(first, times(2)).onViewStateRestored(nullable(Bundle.class));
         verify(first, times(2)).onStart();
         verify(first, times(2)).onResume();
 
@@ -137,6 +137,7 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         final String secondFragmentName = generateMethodTestName("second");
         GuidedStepTestSupportFragment.Provider first = mockProvider(firstFragmentName);
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 List actions = (List) invocation.getArguments()[0];
                 actions.add(new GuidedAction.Builder().id(1000).title("OK").build());
@@ -146,8 +147,9 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
                         .autoSaveRestoreEnabled(false).build());
                 return null;
             }
-        }).when(first).onCreateActions(any(List.class), any(Bundle.class));
+        }).when(first).onCreateActions(any(List.class), nullable(Bundle.class));
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 GuidedAction action = (GuidedAction) invocation.getArguments()[0];
                 GuidedStepTestSupportFragment.Provider obj = (GuidedStepTestSupportFragment.Provider)
@@ -176,11 +178,11 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         });
         PollingCheck.waitFor(new EnterTransitionFinish(second));
         verify(first, times(1)).onCreateView(any(LayoutInflater.class), any(ViewGroup.class),
-                any(Bundle.class), any(View.class));
+                nullable(Bundle.class), any(View.class));
         verify(first, times(1)).onDestroy();
-        verify(second, times(2)).onCreate(any(Bundle.class));
+        verify(second, times(2)).onCreate(nullable(Bundle.class));
         verify(second, times(2)).onCreateView(any(LayoutInflater.class), any(ViewGroup.class),
-                any(Bundle.class), any(View.class));
+                nullable(Bundle.class), any(View.class));
         verify(second, times(1)).onDestroy();
 
         sendKey(KeyEvent.KEYCODE_BACK);
@@ -191,10 +193,10 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         verify(second, times(2)).onDestroy();
         assertEquals("modified text", first.getFragment().findActionById(1001).getTitle());
         assertEquals("text", first.getFragment().findActionById(1002).getTitle());
-        verify(first, times(2)).onCreate(any(Bundle.class));
-        verify(first, times(2)).onCreateActions(any(List.class), any(Bundle.class));
+        verify(first, times(2)).onCreate(nullable(Bundle.class));
+        verify(first, times(2)).onCreateActions(any(List.class), nullable(Bundle.class));
         verify(first, times(2)).onCreateView(any(LayoutInflater.class), any(ViewGroup.class),
-                any(Bundle.class), any(View.class));
+                nullable(Bundle.class), any(View.class));
     }
 
 
@@ -203,13 +205,15 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         final String firstFragmentName = generateMethodTestName("first");
         GuidedStepTestSupportFragment.Provider first = mockProvider(firstFragmentName);
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 List actions = (List) invocation.getArguments()[0];
                 actions.add(new GuidedAction.Builder().id(1001).title("Finish activity").build());
                 return null;
             }
-        }).when(first).onCreateActions(any(List.class), any(Bundle.class));
+        }).when(first).onCreateActions(any(List.class), nullable(Bundle.class));
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 GuidedAction action = (GuidedAction) invocation.getArguments()[0];
                 GuidedStepTestSupportFragment.Provider obj = (GuidedStepTestSupportFragment.Provider)
@@ -235,13 +239,15 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         final String firstFragmentName = generateMethodTestName("first");
         GuidedStepTestSupportFragment.Provider first = mockProvider(firstFragmentName);
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 List actions = (List) invocation.getArguments()[0];
                 actions.add(new GuidedAction.Builder().id(1001).title("Finish fragments").build());
                 return null;
             }
-        }).when(first).onCreateActions(any(List.class), any(Bundle.class));
+        }).when(first).onCreateActions(any(List.class), nullable(Bundle.class));
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 GuidedAction action = (GuidedAction) invocation.getArguments()[0];
                 GuidedStepTestSupportFragment.Provider obj = (GuidedStepTestSupportFragment.Provider)
@@ -272,6 +278,7 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         final boolean[] expandSubActionInOnCreateView = new boolean[] {false};
         GuidedStepTestSupportFragment.Provider first = mockProvider(firstFragmentName);
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 GuidedStepTestSupportFragment.Provider obj = (GuidedStepTestSupportFragment.Provider)
                         invocation.getMock();
@@ -281,8 +288,9 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
                 return null;
             }
         }).when(first).onCreateView(any(LayoutInflater.class), any(ViewGroup.class),
-                any(Bundle.class), any(View.class));
+                nullable(Bundle.class), any(View.class));
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 List actions = (List) invocation.getArguments()[0];
                 List<GuidedAction> subActions = new ArrayList<GuidedAction>();
@@ -292,8 +300,9 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
                         .title("list").build());
                 return null;
             }
-        }).when(first).onCreateActions(any(List.class), any(Bundle.class));
+        }).when(first).onCreateActions(any(List.class), nullable(Bundle.class));
         doAnswer(new Answer<Boolean>() {
+            @Override
             public Boolean answer(InvocationOnMock invocation) {
                 GuidedStepTestSupportFragment.Provider obj = (GuidedStepTestSupportFragment.Provider)
                         invocation.getMock();
@@ -340,14 +349,14 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
 
         PollingCheck.waitFor(new EnterTransitionFinish(second));
         verify(second, times(1)).onCreateView(any(LayoutInflater.class), any(ViewGroup.class),
-                any(Bundle.class), any(View.class));
+                nullable(Bundle.class), any(View.class));
 
         // test expand sub action when return to first fragment
         expandSubActionInOnCreateView[0] = true;
         sendKey(KeyEvent.KEYCODE_BACK);
         PollingCheck.waitFor(new EnterTransitionFinish(first));
         verify(first, times(2)).onCreateView(any(LayoutInflater.class), any(ViewGroup.class),
-                any(Bundle.class), any(View.class));
+                nullable(Bundle.class), any(View.class));
         assertTrue(first.getFragment().isExpanded());
 
         sendKey(KeyEvent.KEYCODE_BACK);
@@ -364,6 +373,7 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
         final String firstFragmentName = generateMethodTestName("first");
         GuidedStepTestSupportFragment.Provider first = mockProvider(firstFragmentName);
         doAnswer(new Answer<Void>() {
+            @Override
             public Void answer(InvocationOnMock invocation) {
                 List actions = (List) invocation.getArguments()[0];
                 List<GuidedAction> subActions = new ArrayList<GuidedAction>();
@@ -372,8 +382,9 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
                         .title("list").build());
                 return null;
             }
-        }).when(first).onCreateActions(any(List.class), any(Bundle.class));
+        }).when(first).onCreateActions(any(List.class), nullable(Bundle.class));
         doAnswer(new Answer<Boolean>() {
+            @Override
             public Boolean answer(InvocationOnMock invocation) {
                 GuidedStepTestSupportFragment.Provider obj = (GuidedStepTestSupportFragment.Provider)
                         invocation.getMock();
@@ -412,4 +423,32 @@ public class GuidedStepSupportFragmentTest extends GuidedStepSupportFragmentTest
 
     }
 
+    @Test
+    public void buttonActionsRtl() throws Throwable {
+        final String firstFragmentName = generateMethodTestName("first");
+        GuidedStepTestSupportFragment.Provider first = mockProvider(firstFragmentName);
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                List actions = (List) invocation.getArguments()[0];
+                actions.add(new GuidedAction.Builder().id(1000).title("action").build());
+                return null;
+            }
+        }).when(first).onCreateActions(any(List.class), nullable(Bundle.class));
+        doAnswer(new Answer<Void>() {
+            @Override
+            public Void answer(InvocationOnMock invocation) {
+                List actions = (List) invocation.getArguments()[0];
+                actions.add(new GuidedAction.Builder().id(1001).title("button action").build());
+                return null;
+            }
+        }).when(first).onCreateButtonActions(any(List.class), nullable(Bundle.class));
+
+        final GuidedStepSupportFragmentTestActivity activity = launchTestActivity(firstFragmentName,
+                true, View.LAYOUT_DIRECTION_RTL);
+
+        assertEquals(View.LAYOUT_DIRECTION_RTL, first.getFragment().getView().getLayoutDirection());
+        View firstView = first.getFragment().getActionItemView(0);
+        assertTrue(firstView.hasFocus());
+    }
 }

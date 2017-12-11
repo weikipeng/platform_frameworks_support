@@ -17,7 +17,6 @@
 package android.support.design.widget;
 
 import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
-import static android.support.design.widget.ViewUtils.objectEquals;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -45,15 +44,17 @@ import android.support.annotation.VisibleForTesting;
 import android.support.design.R;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.graphics.drawable.DrawableCompat;
-import android.support.v4.os.ParcelableCompat;
-import android.support.v4.os.ParcelableCompatCreatorCallbacks;
+import android.support.v4.math.MathUtils;
+import android.support.v4.util.ObjectsCompat;
 import android.support.v4.util.Pools;
 import android.support.v4.view.AbsSavedState;
 import android.support.v4.view.GravityCompat;
-import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.NestedScrollingParent;
+import android.support.v4.view.NestedScrollingParent2;
 import android.support.v4.view.NestedScrollingParentHelper;
 import android.support.v4.view.ViewCompat;
+import android.support.v4.view.ViewCompat.NestedScrollType;
+import android.support.v4.view.ViewCompat.ScrollAxis;
 import android.support.v4.view.WindowInsetsCompat;
 import android.text.TextUtils;
 import android.util.AttributeSet;
@@ -106,7 +107,7 @@ import java.util.Map;
  * {@link CoordinatorLayout.LayoutParams#dodgeInsetEdges} will be moved appropriately so that the
  * views do not overlap.</p>
  */
-public class CoordinatorLayout extends ViewGroup implements NestedScrollingParent {
+public class CoordinatorLayout extends ViewGroup implements NestedScrollingParent2 {
     static final String TAG = "CoordinatorLayout";
     static final String WIDGET_PACKAGE_NAME;
 
@@ -176,7 +177,6 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
     private int[] mKeylines;
 
     private View mBehaviorTouchView;
-    private View mNestedScrollingDirectChild;
     private View mNestedScrollingTarget;
 
     private OnPreDrawListener mOnPreDrawListener;
@@ -214,7 +214,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             final float density = res.getDisplayMetrics().density;
             final int count = mKeylines.length;
             for (int i = 0; i < count; i++) {
-                mKeylines[i] *= density;
+                mKeylines[i] = (int) (mKeylines[i] * density);
             }
         }
         mStatusBarBackground = a.getDrawable(R.styleable.CoordinatorLayout_statusBarBackground);
@@ -232,7 +232,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
     @Override
     public void onAttachedToWindow() {
         super.onAttachedToWindow();
-        resetTouchBehaviors();
+        resetTouchBehaviors(false);
         if (mNeedsPreDrawListener) {
             if (mOnPreDrawListener == null) {
                 mOnPreDrawListener = new OnPreDrawListener();
@@ -251,7 +251,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
     @Override
     public void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        resetTouchBehaviors();
+        resetTouchBehaviors(false);
         if (mNeedsPreDrawListener && mOnPreDrawListener != null) {
             final ViewTreeObserver vto = getViewTreeObserver();
             vto.removeOnPreDrawListener(mOnPreDrawListener);
@@ -351,7 +351,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
     }
 
     final WindowInsetsCompat setWindowInsets(WindowInsetsCompat insets) {
-        if (!objectEquals(mLastInsets, insets)) {
+        if (!ObjectsCompat.equals(mLastInsets, insets)) {
             mLastInsets = insets;
             mDrawStatusBarBackground = insets != null && insets.getSystemWindowInsetTop() > 0;
             setWillNotDraw(!mDrawStatusBarBackground && getBackground() == null);
@@ -373,20 +373,25 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
      * in response to an UP or CANCEL event, when intercept is request-disallowed
      * and similar cases where an event stream in progress will be aborted.
      */
-    private void resetTouchBehaviors() {
-        if (mBehaviorTouchView != null) {
-            final Behavior b = ((LayoutParams) mBehaviorTouchView.getLayoutParams()).getBehavior();
+    private void resetTouchBehaviors(boolean notifyOnInterceptTouchEvent) {
+        final int childCount = getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            final View child = getChildAt(i);
+            final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+            final Behavior b = lp.getBehavior();
             if (b != null) {
                 final long now = SystemClock.uptimeMillis();
                 final MotionEvent cancelEvent = MotionEvent.obtain(now, now,
                         MotionEvent.ACTION_CANCEL, 0.0f, 0.0f, 0);
-                b.onTouchEvent(this, mBehaviorTouchView, cancelEvent);
+                if (notifyOnInterceptTouchEvent) {
+                    b.onInterceptTouchEvent(this, child, cancelEvent);
+                } else {
+                    b.onTouchEvent(this, child, cancelEvent);
+                }
                 cancelEvent.recycle();
             }
-            mBehaviorTouchView = null;
         }
 
-        final int childCount = getChildCount();
         for (int i = 0; i < childCount; i++) {
             final View child = getChildAt(i);
             final LayoutParams lp = (LayoutParams) child.getLayoutParams();
@@ -421,7 +426,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
 
         MotionEvent cancelEvent = null;
 
-        final int action = MotionEventCompat.getActionMasked(ev);
+        final int action = ev.getActionMasked();
 
         final List<View> topmostChildList = mTempList1;
         getTopSortedChildren(topmostChildList);
@@ -489,11 +494,11 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
     public boolean onInterceptTouchEvent(MotionEvent ev) {
         MotionEvent cancelEvent = null;
 
-        final int action = MotionEventCompat.getActionMasked(ev);
+        final int action = ev.getActionMasked();
 
         // Make sure we reset in case we had missed a previous important event.
         if (action == MotionEvent.ACTION_DOWN) {
-            resetTouchBehaviors();
+            resetTouchBehaviors(true);
         }
 
         final boolean intercepted = performIntercept(ev, TYPE_ON_INTERCEPT);
@@ -503,7 +508,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         }
 
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-            resetTouchBehaviors();
+            resetTouchBehaviors(true);
         }
 
         return intercepted;
@@ -515,7 +520,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         boolean cancelSuper = false;
         MotionEvent cancelEvent = null;
 
-        final int action = MotionEventCompat.getActionMasked(ev);
+        final int action = ev.getActionMasked();
 
         if (mBehaviorTouchView != null || (cancelSuper = performIntercept(ev, TYPE_ON_TOUCH))) {
             // Safe since performIntercept guarantees that
@@ -548,7 +553,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         }
 
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-            resetTouchBehaviors();
+            resetTouchBehaviors(false);
         }
 
         return handled;
@@ -558,7 +563,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
     public void requestDisallowInterceptTouchEvent(boolean disallowIntercept) {
         super.requestDisallowInterceptTouchEvent(disallowIntercept);
         if (disallowIntercept && !mDisallowInterceptReset) {
-            resetTouchBehaviors();
+            resetTouchBehaviors(false);
             mDisallowInterceptReset = true;
         }
     }
@@ -627,7 +632,8 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             }
             if (defaultBehavior != null) {
                 try {
-                    result.setBehavior(defaultBehavior.value().newInstance());
+                    result.setBehavior(
+                            defaultBehavior.value().getDeclaredConstructor().newInstance());
                 } catch (Exception e) {
                     Log.e(TAG, "Default behavior class " + defaultBehavior.value().getName() +
                             " could not be instantiated. Did you forget a default constructor?", e);
@@ -656,14 +662,13 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
                     continue;
                 }
                 final View other = getChildAt(j);
-                final LayoutParams otherLp = getResolvedLayoutParams(other);
-                if (otherLp.dependsOn(this, other, view)) {
+                if (lp.dependsOn(this, view, other)) {
                     if (!mChildDag.contains(other)) {
                         // Make sure that the other node is added
                         mChildDag.addNode(other);
                     }
                     // Now add the dependency to the graph
-                    mChildDag.addEdge(view, other);
+                    mChildDag.addEdge(other, view);
                 }
             }
         }
@@ -792,14 +797,13 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
 
             heightUsed = Math.max(heightUsed, heightPadding + child.getMeasuredHeight() +
                     lp.topMargin + lp.bottomMargin);
-            childState = ViewCompat.combineMeasuredStates(childState,
-                    ViewCompat.getMeasuredState(child));
+            childState = View.combineMeasuredStates(childState, child.getMeasuredState());
         }
 
-        final int width = ViewCompat.resolveSizeAndState(widthUsed, widthMeasureSpec,
-                childState & ViewCompat.MEASURED_STATE_MASK);
-        final int height = ViewCompat.resolveSizeAndState(heightUsed, heightMeasureSpec,
-                childState << ViewCompat.MEASURED_HEIGHT_STATE_SHIFT);
+        final int width = View.resolveSizeAndState(widthUsed, widthMeasureSpec,
+                childState & View.MEASURED_STATE_MASK);
+        final int height = View.resolveSizeAndState(heightUsed, heightMeasureSpec,
+                childState << View.MEASURED_HEIGHT_STATE_SHIFT);
         setMeasuredDimension(width, height);
     }
 
@@ -1211,7 +1215,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
                     mScrimPaint = new Paint();
                 }
                 mScrimPaint.setColor(lp.mBehavior.getScrimColor(this, child));
-                mScrimPaint.setAlpha(MathUtils.constrain(Math.round(255 * scrimAlpha), 0, 255));
+                mScrimPaint.setAlpha(MathUtils.clamp(Math.round(255 * scrimAlpha), 0, 255));
 
                 final int saved = canvas.save();
                 if (child.isOpaque()) {
@@ -1371,9 +1375,9 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         if (behavior != null && behavior.getInsetDodgeRect(this, child, dodgeRect)) {
             // Make sure that the rect is within the view's bounds
             if (!bounds.contains(dodgeRect)) {
-                    throw new IllegalArgumentException("Rect should be within the child's bounds."
-                            + " Rect:" + dodgeRect.toShortString()
-                            + " | Bounds:" + bounds.toShortString());
+                throw new IllegalArgumentException("Rect should be within the child's bounds."
+                        + " Rect:" + dodgeRect.toShortString()
+                        + " | Bounds:" + bounds.toShortString());
             }
         } else {
             dodgeRect.set(bounds);
@@ -1701,6 +1705,11 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
 
     @Override
     public boolean onStartNestedScroll(View child, View target, int nestedScrollAxes) {
+        return onStartNestedScroll(child, target, nestedScrollAxes, ViewCompat.TYPE_TOUCH);
+    }
+
+    @Override
+    public boolean onStartNestedScroll(View child, View target, int axes, int type) {
         boolean handled = false;
 
         final int childCount = getChildCount();
@@ -1713,13 +1722,12 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             final LayoutParams lp = (LayoutParams) view.getLayoutParams();
             final Behavior viewBehavior = lp.getBehavior();
             if (viewBehavior != null) {
-                final boolean accepted = viewBehavior.onStartNestedScroll(this, view, child, target,
-                        nestedScrollAxes);
+                final boolean accepted = viewBehavior.onStartNestedScroll(this, view, child,
+                        target, axes, type);
                 handled |= accepted;
-
-                lp.acceptNestedScroll(accepted);
+                lp.setNestedScrollAccepted(type, accepted);
             } else {
-                lp.acceptNestedScroll(false);
+                lp.setNestedScrollAccepted(type, false);
             }
         }
         return handled;
@@ -1727,52 +1735,67 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
 
     @Override
     public void onNestedScrollAccepted(View child, View target, int nestedScrollAxes) {
-        mNestedScrollingParentHelper.onNestedScrollAccepted(child, target, nestedScrollAxes);
-        mNestedScrollingDirectChild = child;
+        onNestedScrollAccepted(child, target, nestedScrollAxes, ViewCompat.TYPE_TOUCH);
+    }
+
+    @Override
+    public void onNestedScrollAccepted(View child, View target, int nestedScrollAxes, int type) {
+        mNestedScrollingParentHelper.onNestedScrollAccepted(child, target, nestedScrollAxes, type);
         mNestedScrollingTarget = target;
 
         final int childCount = getChildCount();
         for (int i = 0; i < childCount; i++) {
             final View view = getChildAt(i);
             final LayoutParams lp = (LayoutParams) view.getLayoutParams();
-            if (!lp.isNestedScrollAccepted()) {
+            if (!lp.isNestedScrollAccepted(type)) {
                 continue;
             }
 
             final Behavior viewBehavior = lp.getBehavior();
             if (viewBehavior != null) {
-                viewBehavior.onNestedScrollAccepted(this, view, child, target, nestedScrollAxes);
+                viewBehavior.onNestedScrollAccepted(this, view, child, target,
+                        nestedScrollAxes, type);
             }
         }
     }
 
     @Override
     public void onStopNestedScroll(View target) {
-        mNestedScrollingParentHelper.onStopNestedScroll(target);
+        onStopNestedScroll(target, ViewCompat.TYPE_TOUCH);
+    }
+
+    @Override
+    public void onStopNestedScroll(View target, int type) {
+        mNestedScrollingParentHelper.onStopNestedScroll(target, type);
 
         final int childCount = getChildCount();
         for (int i = 0; i < childCount; i++) {
             final View view = getChildAt(i);
             final LayoutParams lp = (LayoutParams) view.getLayoutParams();
-            if (!lp.isNestedScrollAccepted()) {
+            if (!lp.isNestedScrollAccepted(type)) {
                 continue;
             }
 
             final Behavior viewBehavior = lp.getBehavior();
             if (viewBehavior != null) {
-                viewBehavior.onStopNestedScroll(this, view, target);
+                viewBehavior.onStopNestedScroll(this, view, target, type);
             }
-            lp.resetNestedScroll();
+            lp.resetNestedScroll(type);
             lp.resetChangedAfterNestedScroll();
         }
-
-        mNestedScrollingDirectChild = null;
         mNestedScrollingTarget = null;
     }
 
     @Override
     public void onNestedScroll(View target, int dxConsumed, int dyConsumed,
             int dxUnconsumed, int dyUnconsumed) {
+        onNestedScroll(target, dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed,
+                ViewCompat.TYPE_TOUCH);
+    }
+
+    @Override
+    public void onNestedScroll(View target, int dxConsumed, int dyConsumed,
+            int dxUnconsumed, int dyUnconsumed, int type) {
         final int childCount = getChildCount();
         boolean accepted = false;
 
@@ -1784,14 +1807,14 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             }
 
             final LayoutParams lp = (LayoutParams) view.getLayoutParams();
-            if (!lp.isNestedScrollAccepted()) {
+            if (!lp.isNestedScrollAccepted(type)) {
                 continue;
             }
 
             final Behavior viewBehavior = lp.getBehavior();
             if (viewBehavior != null) {
                 viewBehavior.onNestedScroll(this, view, target, dxConsumed, dyConsumed,
-                        dxUnconsumed, dyUnconsumed);
+                        dxUnconsumed, dyUnconsumed, type);
                 accepted = true;
             }
         }
@@ -1803,6 +1826,11 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
 
     @Override
     public void onNestedPreScroll(View target, int dx, int dy, int[] consumed) {
+        onNestedPreScroll(target, dx, dy, consumed, ViewCompat.TYPE_TOUCH);
+    }
+
+    @Override
+    public void onNestedPreScroll(View target, int dx, int dy, int[] consumed, int  type) {
         int xConsumed = 0;
         int yConsumed = 0;
         boolean accepted = false;
@@ -1816,14 +1844,14 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             }
 
             final LayoutParams lp = (LayoutParams) view.getLayoutParams();
-            if (!lp.isNestedScrollAccepted()) {
+            if (!lp.isNestedScrollAccepted(type)) {
                 continue;
             }
 
             final Behavior viewBehavior = lp.getBehavior();
             if (viewBehavior != null) {
                 mTempIntPair[0] = mTempIntPair[1] = 0;
-                viewBehavior.onNestedPreScroll(this, view, target, dx, dy, mTempIntPair);
+                viewBehavior.onNestedPreScroll(this, view, target, dx, dy, mTempIntPair, type);
 
                 xConsumed = dx > 0 ? Math.max(xConsumed, mTempIntPair[0])
                         : Math.min(xConsumed, mTempIntPair[0]);
@@ -1855,7 +1883,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             }
 
             final LayoutParams lp = (LayoutParams) view.getLayoutParams();
-            if (!lp.isNestedScrollAccepted()) {
+            if (!lp.isNestedScrollAccepted(ViewCompat.TYPE_TOUCH)) {
                 continue;
             }
 
@@ -1884,7 +1912,7 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             }
 
             final LayoutParams lp = (LayoutParams) view.getLayoutParams();
-            if (!lp.isNestedScrollAccepted()) {
+            if (!lp.isNestedScrollAccepted(ViewCompat.TYPE_TOUCH)) {
                 continue;
             }
 
@@ -2165,15 +2193,6 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         }
 
         /**
-         * @deprecated this method is not called anymore. You can safely remove all usages
-         * and implementations. This method will be removed in a future release.
-         */
-        @Deprecated
-        public boolean isDirty(CoordinatorLayout parent, V child) {
-            return false;
-        }
-
-        /**
          * Called when the parent CoordinatorLayout is about to measure the given child view.
          *
          * <p>This method can be used to perform custom or modified measurement of a child view
@@ -2253,6 +2272,17 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             return lp.mBehaviorTag;
         }
 
+        /**
+         * @deprecated You should now override
+         * {@link #onStartNestedScroll(CoordinatorLayout, View, View, View, int, int)}. This
+         * method will still continue to be called if the type is {@link ViewCompat#TYPE_TOUCH}.
+         */
+        @Deprecated
+        public boolean onStartNestedScroll(@NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull V child, @NonNull View directTargetChild, @NonNull View target,
+                @ScrollAxis int axes) {
+            return false;
+        }
 
         /**
          * Called when a descendant of the CoordinatorLayout attempts to initiate a nested scroll.
@@ -2268,16 +2298,34 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
          * @param directTargetChild the child view of the CoordinatorLayout that either is or
          *                          contains the target of the nested scroll operation
          * @param target the descendant view of the CoordinatorLayout initiating the nested scroll
-         * @param nestedScrollAxes the axes that this nested scroll applies to. See
+         * @param axes the axes that this nested scroll applies to. See
          *                         {@link ViewCompat#SCROLL_AXIS_HORIZONTAL},
          *                         {@link ViewCompat#SCROLL_AXIS_VERTICAL}
+         * @param type the type of input which cause this scroll event
          * @return true if the Behavior wishes to accept this nested scroll
          *
-         * @see NestedScrollingParent#onStartNestedScroll(View, View, int)
+         * @see NestedScrollingParent2#onStartNestedScroll(View, View, int, int)
          */
-        public boolean onStartNestedScroll(CoordinatorLayout coordinatorLayout,
-                V child, View directTargetChild, View target, int nestedScrollAxes) {
+        public boolean onStartNestedScroll(@NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull V child, @NonNull View directTargetChild, @NonNull View target,
+                @ScrollAxis int axes, @NestedScrollType int type) {
+            if (type == ViewCompat.TYPE_TOUCH) {
+                return onStartNestedScroll(coordinatorLayout, child, directTargetChild,
+                        target, axes);
+            }
             return false;
+        }
+
+        /**
+         * @deprecated You should now override
+         * {@link #onNestedScrollAccepted(CoordinatorLayout, View, View, View, int, int)}. This
+         * method will still continue to be called if the type is {@link ViewCompat#TYPE_TOUCH}.
+         */
+        @Deprecated
+        public void onNestedScrollAccepted(@NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull V child, @NonNull View directTargetChild, @NonNull View target,
+                @ScrollAxis int axes) {
+            // Do nothing
         }
 
         /**
@@ -2294,14 +2342,30 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
          * @param directTargetChild the child view of the CoordinatorLayout that either is or
          *                          contains the target of the nested scroll operation
          * @param target the descendant view of the CoordinatorLayout initiating the nested scroll
-         * @param nestedScrollAxes the axes that this nested scroll applies to. See
+         * @param axes the axes that this nested scroll applies to. See
          *                         {@link ViewCompat#SCROLL_AXIS_HORIZONTAL},
          *                         {@link ViewCompat#SCROLL_AXIS_VERTICAL}
+         * @param type the type of input which cause this scroll event
          *
-         * @see NestedScrollingParent#onNestedScrollAccepted(View, View, int)
+         * @see NestedScrollingParent2#onNestedScrollAccepted(View, View, int, int)
          */
-        public void onNestedScrollAccepted(CoordinatorLayout coordinatorLayout, V child,
-                View directTargetChild, View target, int nestedScrollAxes) {
+        public void onNestedScrollAccepted(@NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull V child, @NonNull View directTargetChild, @NonNull View target,
+                @ScrollAxis int axes, @NestedScrollType int type) {
+            if (type == ViewCompat.TYPE_TOUCH) {
+                onNestedScrollAccepted(coordinatorLayout, child, directTargetChild,
+                        target, axes);
+            }
+        }
+
+        /**
+         * @deprecated You should now override
+         * {@link #onStopNestedScroll(CoordinatorLayout, View, View, int)}. This method will still
+         * continue to be called if the type is {@link ViewCompat#TYPE_TOUCH}.
+         */
+        @Deprecated
+        public void onStopNestedScroll(@NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull V child, @NonNull View target) {
             // Do nothing
         }
 
@@ -2322,10 +2386,27 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
          * @param child the child view of the CoordinatorLayout this Behavior is associated with
          * @param target the descendant view of the CoordinatorLayout that initiated
          *               the nested scroll
+         * @param type the type of input which cause this scroll event
          *
-         * @see NestedScrollingParent#onStopNestedScroll(View)
+         * @see NestedScrollingParent2#onStopNestedScroll(View, int)
          */
-        public void onStopNestedScroll(CoordinatorLayout coordinatorLayout, V child, View target) {
+        public void onStopNestedScroll(@NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull V child, @NonNull View target, @NestedScrollType int type) {
+            if (type == ViewCompat.TYPE_TOUCH) {
+                onStopNestedScroll(coordinatorLayout, child, target);
+            }
+        }
+
+        /**
+         * @deprecated You should now override
+         * {@link #onNestedScroll(CoordinatorLayout, View, View, int, int, int, int, int)}.
+         * This method will still continue to be called if the type is
+         * {@link ViewCompat#TYPE_TOUCH}.
+         */
+        @Deprecated
+        public void onNestedScroll(@NonNull CoordinatorLayout coordinatorLayout, @NonNull V child,
+                @NonNull View target, int dxConsumed, int dyConsumed,
+                int dxUnconsumed, int dyUnconsumed) {
             // Do nothing
         }
 
@@ -2354,11 +2435,28 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
          *                     operation, but requested by the user
          * @param dyUnconsumed vertical pixels not consumed by the target's own scrolling operation,
          *                     but requested by the user
+         * @param type the type of input which cause this scroll event
          *
-         * @see NestedScrollingParent#onNestedScroll(View, int, int, int, int)
+         * @see NestedScrollingParent2#onNestedScroll(View, int, int, int, int, int)
          */
-        public void onNestedScroll(CoordinatorLayout coordinatorLayout, V child, View target,
-                int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed) {
+        public void onNestedScroll(@NonNull CoordinatorLayout coordinatorLayout, @NonNull V child,
+                @NonNull View target, int dxConsumed, int dyConsumed,
+                int dxUnconsumed, int dyUnconsumed, @NestedScrollType int type) {
+            if (type == ViewCompat.TYPE_TOUCH) {
+                onNestedScroll(coordinatorLayout, child, target, dxConsumed, dyConsumed,
+                        dxUnconsumed, dyUnconsumed);
+            }
+        }
+
+        /**
+         * @deprecated You should now override
+         * {@link #onNestedPreScroll(CoordinatorLayout, View, View, int, int, int[], int)}.
+         * This method will still continue to be called if the type is
+         * {@link ViewCompat#TYPE_TOUCH}.
+         */
+        @Deprecated
+        public void onNestedPreScroll(@NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull V child, @NonNull View target, int dx, int dy, @NonNull int[] consumed) {
             // Do nothing
         }
 
@@ -2387,12 +2485,16 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
          * @param consumed out parameter. consumed[0] should be set to the distance of dx that
          *                 was consumed, consumed[1] should be set to the distance of dy that
          *                 was consumed
+         * @param type the type of input which cause this scroll event
          *
-         * @see NestedScrollingParent#onNestedPreScroll(View, int, int, int[])
+         * @see NestedScrollingParent2#onNestedPreScroll(View, int, int, int[], int)
          */
-        public void onNestedPreScroll(CoordinatorLayout coordinatorLayout, V child, View target,
-                int dx, int dy, int[] consumed) {
-            // Do nothing
+        public void onNestedPreScroll(@NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull V child, @NonNull View target, int dx, int dy, @NonNull int[] consumed,
+                @NestedScrollType int type) {
+            if (type == ViewCompat.TYPE_TOUCH) {
+                onNestedPreScroll(coordinatorLayout, child, target, dx, dy, consumed);
+            }
         }
 
         /**
@@ -2422,8 +2524,9 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
          *
          * @see NestedScrollingParent#onNestedFling(View, float, float, boolean)
          */
-        public boolean onNestedFling(CoordinatorLayout coordinatorLayout, V child, View target,
-                float velocityX, float velocityY, boolean consumed) {
+        public boolean onNestedFling(@NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull V child, @NonNull View target, float velocityX, float velocityY,
+                boolean consumed) {
             return false;
         }
 
@@ -2450,8 +2553,8 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
          *
          * @see NestedScrollingParent#onNestedPreFling(View, float, float)
          */
-        public boolean onNestedPreFling(CoordinatorLayout coordinatorLayout, V child, View target,
-                float velocityX, float velocityY) {
+        public boolean onNestedPreFling(@NonNull CoordinatorLayout coordinatorLayout,
+                @NonNull V child, @NonNull View target, float velocityX, float velocityY) {
             return false;
         }
 
@@ -2614,7 +2717,8 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
         View mAnchorDirectChild;
 
         private boolean mDidBlockInteraction;
-        private boolean mDidAcceptNestedScroll;
+        private boolean mDidAcceptNestedScrollTouch;
+        private boolean mDidAcceptNestedScrollNonTouch;
         private boolean mDidChangeAfterNestedScroll;
 
         final Rect mLastChildRect = new Rect();
@@ -2805,16 +2909,29 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
             mDidBlockInteraction = false;
         }
 
-        void resetNestedScroll() {
-            mDidAcceptNestedScroll = false;
+        void resetNestedScroll(int type) {
+            setNestedScrollAccepted(type, false);
         }
 
-        void acceptNestedScroll(boolean accept) {
-            mDidAcceptNestedScroll = accept;
+        void setNestedScrollAccepted(int type, boolean accept) {
+            switch (type) {
+                case ViewCompat.TYPE_TOUCH:
+                    mDidAcceptNestedScrollTouch = accept;
+                    break;
+                case ViewCompat.TYPE_NON_TOUCH:
+                    mDidAcceptNestedScrollNonTouch = accept;
+                    break;
+            }
         }
 
-        boolean isNestedScrollAccepted() {
-            return mDidAcceptNestedScroll;
+        boolean isNestedScrollAccepted(int type) {
+            switch (type) {
+                case ViewCompat.TYPE_TOUCH:
+                    return mDidAcceptNestedScrollTouch;
+                case ViewCompat.TYPE_NON_TOUCH:
+                    return mDidAcceptNestedScrollNonTouch;
+            }
+            return false;
         }
 
         boolean getChangedAfterNestedScroll() {
@@ -3108,17 +3225,22 @@ public class CoordinatorLayout extends ViewGroup implements NestedScrollingParen
 
         }
 
-        public static final Parcelable.Creator<SavedState> CREATOR
-                = ParcelableCompat.newCreator(new ParcelableCompatCreatorCallbacks<SavedState>() {
-            @Override
-            public SavedState createFromParcel(Parcel in, ClassLoader loader) {
-                return new SavedState(in, loader);
-            }
+        public static final Parcelable.Creator<SavedState> CREATOR =
+                new ClassLoaderCreator<SavedState>() {
+                    @Override
+                    public SavedState createFromParcel(Parcel in, ClassLoader loader) {
+                        return new SavedState(in, loader);
+                    }
 
-            @Override
-            public SavedState[] newArray(int size) {
-                return new SavedState[size];
-            }
-        });
+                    @Override
+                    public SavedState createFromParcel(Parcel in) {
+                        return new SavedState(in, null);
+                    }
+
+                    @Override
+                    public SavedState[] newArray(int size) {
+                        return new SavedState[size];
+                    }
+                };
     }
 }

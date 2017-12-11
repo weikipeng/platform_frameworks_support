@@ -21,8 +21,9 @@ import static android.support.v7.testutils.TestUtilsActions.setTextAppearance;
 
 import static org.junit.Assert.assertEquals;
 
-import android.support.test.filters.SdkSuppress;
+import android.graphics.Typeface;
 import android.support.test.filters.SmallTest;
+import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.appcompat.test.R;
 
 import org.junit.Test;
@@ -58,20 +59,20 @@ public class AppCompatButtonTest
         // the transformed text that is set on the Layout object used to draw the final
         // (transformed) content.
         assertEquals("Button starts in all caps on", text1.toUpperCase(),
-                button1.getLayout().getText());
+                button1.getLayout().getText().toString());
         assertEquals("Button starts in all caps off", text2,
-                button2.getLayout().getText());
+                button2.getLayout().getText().toString());
 
         // Toggle all-caps mode on the two buttons
         onView(withId(R.id.button_caps1)).perform(
                 setTextAppearance(R.style.TextStyleAllCapsOff));
         assertEquals("Button is now in all caps off", text1,
-                button1.getLayout().getText());
+                button1.getLayout().getText().toString());
 
         onView(withId(R.id.button_caps2)).perform(
                 setTextAppearance(R.style.TextStyleAllCapsOn));
         assertEquals("Button is now in all caps on", text2.toUpperCase(),
-                button2.getLayout().getText());
+                button2.getLayout().getText().toString());
     }
 
     @Test
@@ -91,5 +92,13 @@ public class AppCompatButtonTest
     @Test
     public void testBackgroundTintListOnButton() {
         testUntintedBackgroundTintingViewCompatAcrossStateChange(R.id.button_untinted);
+    }
+
+    @Test
+    public void testFontResources() {
+        AppCompatButton button = mContainer.findViewById(R.id.button_fontresource);
+        Typeface expected = ResourcesCompat.getFont(mActivity, R.font.samplefont);
+
+        assertEquals(expected, button.getTypeface());
     }
 }

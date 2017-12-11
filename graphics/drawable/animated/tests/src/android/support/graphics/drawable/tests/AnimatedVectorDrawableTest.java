@@ -51,6 +51,7 @@ import android.widget.ImageButton;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -468,7 +469,7 @@ public class AnimatedVectorDrawableTest {
         final Canvas c = new Canvas(bitmap);
 
         final AnimatedVectorDrawableCompat avd = AnimatedVectorDrawableCompat.create(mContext,
-                R.drawable.animation_path_morphing_rect);
+                R.drawable.animation_path_morphing_rect2);
         avd.setBounds(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
 
         bitmap.eraseColor(0);
@@ -515,22 +516,17 @@ public class AnimatedVectorDrawableTest {
         }
     }
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
     /**
      * Make sure when path didn't match, we got an exception.
      */
     @Test
     @UiThreadTest
     public void testPathMorphingException() throws Exception {
-        boolean hasException = false;
-        try {
-            final AnimatedVectorDrawableCompat avd = AnimatedVectorDrawableCompat.create(mContext,
+        thrown.expect(RuntimeException.class);
+        final AnimatedVectorDrawableCompat avd = AnimatedVectorDrawableCompat.create(mContext,
                     R.drawable.animation_path_morphing_rect_exception);
-        } catch (Exception e) {
-            // Expected to come in here, so nothing happen.
-            hasException = true;
-        }
-
-        assertTrue(hasException);
-
     }
 }

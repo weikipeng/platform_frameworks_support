@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import android.content.Context;
 import android.os.Build;
@@ -41,6 +42,7 @@ import android.view.ViewGroup;
 import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.junit.Before;
@@ -57,7 +59,6 @@ import java.util.UUID;
 public class RecyclerViewBasicTest {
 
     RecyclerView mRecyclerView;
-
 
     @Before
     public void setUp() throws Exception {
@@ -459,6 +460,43 @@ public class RecyclerViewBasicTest {
         assertEquals(recyclerView, holder.mNestedRecyclerView.get());
     }
 
+    @Test
+    public void exceptionContainsClasses() {
+        RecyclerView first = new RecyclerView(getContext());
+        first.setLayoutManager(new LinearLayoutManager(getContext()));
+        first.setAdapter(new MockAdapter(10));
+
+        RecyclerView second = new RecyclerView(getContext());
+        try {
+            second.setLayoutManager(first.getLayoutManager());
+            fail("exception expected");
+        } catch (IllegalArgumentException e) {
+            // Note: exception contains first RV
+            String m = e.getMessage();
+            assertTrue("must contain RV class", m.contains(RecyclerView.class.getName()));
+            assertTrue("must contain Adapter class", m.contains(MockAdapter.class.getName()));
+            assertTrue("must contain LM class", m.contains(LinearLayoutManager.class.getName()));
+            assertTrue("must contain ctx class", m.contains(getContext().getClass().getName()));
+
+        }
+    }
+
+    @Test
+    public void focusOrderTest() {
+        FocusOrderAdapter focusAdapter = new FocusOrderAdapter(getContext());
+        mRecyclerView.setAdapter(focusAdapter);
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        measure();
+        layout();
+        assertSame(focusAdapter.mBottomLeft,
+                focusAdapter.mTopRight.focusSearch(View.FOCUS_FORWARD));
+        assertSame(focusAdapter.mBottomRight,
+                focusAdapter.mBottomLeft.focusSearch(View.FOCUS_FORWARD));
+        // we don't want looping within RecyclerView
+        assertNull(focusAdapter.mBottomRight.focusSearch(View.FOCUS_FORWARD));
+        assertNull(focusAdapter.mTopLeft.focusSearch(View.FOCUS_BACKWARD));
+    }
+
     static class MockLayoutManager extends RecyclerView.LayoutManager {
 
         int mLayoutCount = 0;
@@ -642,6 +680,59 @@ public class RecyclerViewBasicTest {
 
         public int getOnSavedInstanceCnt() {
             return mOnSavedInstanceCnt;
+        }
+    }
+
+    static class FocusOrderAdapter extends RecyclerView.Adapter {
+        TextView mTopLeft;
+        TextView mTopRight;
+        TextView mBottomLeft;
+        TextView mBottomRight;
+
+        FocusOrderAdapter(Context context) {
+            mTopLeft = new TextView(context);
+            mTopRight = new TextView(context);
+            mBottomLeft = new TextView(context);
+            mBottomRight = new TextView(context);
+            for (TextView tv : new TextView[]{mTopLeft, mTopRight, mBottomLeft, mBottomRight}) {
+                tv.setFocusableInTouchMode(true);
+                tv.setLayoutParams(new LinearLayout.LayoutParams(100, 100));
+            }
+            // create a scenario where the "first" focusable is to the right of the last one
+            mTopLeft.setFocusable(false);
+            mTopRight.getLayoutParams().width = 101;
+            mTopLeft.getLayoutParams().width = 101;
+        }
+
+        @Override
+        public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            LinearLayout holder = new LinearLayout(parent.getContext());
+            holder.setOrientation(LinearLayout.HORIZONTAL);
+            return new MockViewHolder(holder);
+        }
+
+        @Override
+        public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+            LinearLayout l = (LinearLayout) holder.itemView;
+            l.removeAllViews();
+            if (position == 0) {
+                l.addView(mTopLeft);
+                l.addView(mTopRight);
+            } else {
+                l.addView(mBottomLeft);
+                l.addView(mBottomRight);
+            }
+        }
+
+        @Override
+        public int getItemCount() {
+            return 2;
+        }
+
+        void removeItems(int start, int count) {
+        }
+
+        void addItems(int start, int count) {
         }
     }
 }

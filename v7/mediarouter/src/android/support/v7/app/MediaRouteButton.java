@@ -22,24 +22,22 @@ import android.content.ContextWrapper;
 import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.graphics.Canvas;
-import android.graphics.Rect;
 import android.graphics.drawable.AnimationDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.graphics.drawable.DrawableCompat;
-import android.support.v4.view.GravityCompat;
 import android.support.v7.media.MediaRouteSelector;
 import android.support.v7.media.MediaRouter;
 import android.support.v7.mediarouter.R;
+import android.support.v7.widget.TooltipCompat;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.Gravity;
-import android.view.HapticFeedbackConstants;
+import android.util.SparseArray;
 import android.view.SoundEffectConstants;
 import android.view.View;
-import android.widget.Toast;
 
 /**
  * The media route button allows the user to select routes and to control the
@@ -93,9 +91,11 @@ public class MediaRouteButton extends View {
 
     private boolean mAttachedToWindow;
 
+    private static final SparseArray<Drawable.ConstantState> sRemoteIndicatorCache =
+            new SparseArray<>(2);
+    private RemoteIndicatorLoader mRemoteIndicatorLoader;
     private Drawable mRemoteIndicator;
     private boolean mRemoteActive;
-    private boolean mCheatSheetEnabled;
     private boolean mIsConnecting;
 
     private ColorStateList mButtonTint;
@@ -121,8 +121,7 @@ public class MediaRouteButton extends View {
     }
 
     public MediaRouteButton(Context context, AttributeSet attrs, int defStyleAttr) {
-        super(MediaRouterThemeHelper.createThemedContext(context, defStyleAttr), attrs,
-                defStyleAttr);
+        super(MediaRouterThemeHelper.createThemedButtonContext(context), attrs, defStyleAttr);
         context = getContext();
 
         mRouter = MediaRouter.getInstance(context);
@@ -130,18 +129,28 @@ public class MediaRouteButton extends View {
 
         TypedArray a = context.obtainStyledAttributes(attrs,
                 R.styleable.MediaRouteButton, defStyleAttr, 0);
-        mButtonTint = a.getColorStateList(R.styleable.MediaRouteButton_buttonTint);
-        setRemoteIndicatorDrawable(a.getDrawable(
-                R.styleable.MediaRouteButton_externalRouteEnabledDrawable));
+        mButtonTint = a.getColorStateList(R.styleable.MediaRouteButton_mediaRouteButtonTint);
         mMinWidth = a.getDimensionPixelSize(
                 R.styleable.MediaRouteButton_android_minWidth, 0);
         mMinHeight = a.getDimensionPixelSize(
                 R.styleable.MediaRouteButton_android_minHeight, 0);
+        int remoteIndicatorResId = a.getResourceId(
+                R.styleable.MediaRouteButton_externalRouteEnabledDrawable, 0);
         a.recycle();
+
+        if (remoteIndicatorResId != 0) {
+            Drawable.ConstantState remoteIndicatorState =
+                    sRemoteIndicatorCache.get(remoteIndicatorResId);
+            if (remoteIndicatorState != null) {
+                setRemoteIndicatorDrawable(remoteIndicatorState.newDrawable());
+            } else {
+                mRemoteIndicatorLoader = new RemoteIndicatorLoader(remoteIndicatorResId);
+                mRemoteIndicatorLoader.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            }
+        }
 
         updateContentDescription();
         setClickable(true);
-        setLongClickable(true);
     }
 
     /**
@@ -280,7 +289,8 @@ public class MediaRouteButton extends View {
      * button when the button is long pressed.
      */
     void setCheatSheetEnabled(boolean enable) {
-        mCheatSheetEnabled = enable;
+        TooltipCompat.setTooltipText(this,
+                enable ? getContext().getString(R.string.mr_button_content_description) : null);
     }
 
     @Override
@@ -291,42 +301,6 @@ public class MediaRouteButton extends View {
             playSoundEffect(SoundEffectConstants.CLICK);
         }
         return showDialog() || handled;
-    }
-
-    @Override
-    public boolean performLongClick() {
-        if (super.performLongClick()) {
-            return true;
-        }
-
-        if (!mCheatSheetEnabled) {
-            return false;
-        }
-
-        final int[] screenPos = new int[2];
-        final Rect displayFrame = new Rect();
-        getLocationOnScreen(screenPos);
-        getWindowVisibleDisplayFrame(displayFrame);
-
-        final Context context = getContext();
-        final int width = getWidth();
-        final int height = getHeight();
-        final int midy = screenPos[1] + height / 2;
-        final int screenWidth = context.getResources().getDisplayMetrics().widthPixels;
-
-        Toast cheatSheet = Toast.makeText(context, R.string.mr_button_content_description,
-                Toast.LENGTH_SHORT);
-        if (midy < displayFrame.height()) {
-            // Show along the top; follow action buttons
-            cheatSheet.setGravity(Gravity.TOP | GravityCompat.END,
-                    screenWidth - screenPos[0] - width / 2, height);
-        } else {
-            // Show along the bottom center
-            cheatSheet.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, height);
-        }
-        cheatSheet.show();
-        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-        return true;
     }
 
     @Override
@@ -360,22 +334,40 @@ public class MediaRouteButton extends View {
      * Sets a drawable to use as the remote route indicator.
      */
     public void setRemoteIndicatorDrawable(Drawable d) {
+        if (mRemoteIndicatorLoader != null) {
+            mRemoteIndicatorLoader.cancel(false);
+        }
+
         if (mRemoteIndicator != null) {
             mRemoteIndicator.setCallback(null);
             unscheduleDrawable(mRemoteIndicator);
         }
-        if (mButtonTint != null) {
-            d = DrawableCompat.wrap(d.mutate());
-            DrawableCompat.setTintList(d, mButtonTint);
-        }
-        mRemoteIndicator = d;
         if (d != null) {
+            if (mButtonTint != null) {
+                d = DrawableCompat.wrap(d.mutate());
+                DrawableCompat.setTintList(d, mButtonTint);
+            }
             d.setCallback(this);
             d.setState(getDrawableState());
             d.setVisible(getVisibility() == VISIBLE, false);
         }
+        mRemoteIndicator = d;
 
         refreshDrawableState();
+        if (mAttachedToWindow && mRemoteIndicator != null
+                && mRemoteIndicator.getCurrent() instanceof AnimationDrawable) {
+            AnimationDrawable curDrawable = (AnimationDrawable) mRemoteIndicator.getCurrent();
+            if (mIsConnecting) {
+                if (!curDrawable.isRunning()) {
+                    curDrawable.start();
+                }
+            } else if (mRemoteActive) {
+                if (curDrawable.isRunning()) {
+                    curDrawable.stop();
+                }
+                curDrawable.selectDrawable(curDrawable.getNumberOfFrames() - 1);
+            }
+        }
     }
 
     @Override
@@ -383,7 +375,7 @@ public class MediaRouteButton extends View {
         return super.verifyDrawable(who) || who == mRemoteIndicator;
     }
 
-    //@Override defined in v11
+    @Override
     public void jumpDrawablesToCurrentState() {
         // We can't call super to handle the background so we do it ourselves.
         //super.jumpDrawablesToCurrentState();
@@ -513,7 +505,8 @@ public class MediaRouteButton extends View {
             setEnabled(mRouter.isRouteAvailable(mSelector,
                     MediaRouter.AVAILABILITY_FLAG_IGNORE_DEFAULT_ROUTE));
         }
-        if (mRemoteIndicator.getCurrent() instanceof AnimationDrawable) {
+        if (mRemoteIndicator != null
+                && mRemoteIndicator.getCurrent() instanceof AnimationDrawable) {
             AnimationDrawable curDrawable = (AnimationDrawable) mRemoteIndicator.getCurrent();
             if (mAttachedToWindow) {
                 if ((needsRefresh || isConnecting) && !curDrawable.isRunning()) {
@@ -584,6 +577,37 @@ public class MediaRouteButton extends View {
         @Override
         public void onProviderChanged(MediaRouter router, MediaRouter.ProviderInfo provider) {
             refreshRoute();
+        }
+    }
+
+    private final class RemoteIndicatorLoader extends AsyncTask<Void, Void, Drawable> {
+        private final int mResId;
+
+        RemoteIndicatorLoader(int resId) {
+            mResId = resId;
+        }
+
+        @Override
+        protected Drawable doInBackground(Void... params) {
+            return getContext().getResources().getDrawable(mResId);
+        }
+
+        @Override
+        protected void onPostExecute(Drawable remoteIndicator) {
+            cacheAndReset(remoteIndicator);
+            setRemoteIndicatorDrawable(remoteIndicator);
+        }
+
+        @Override
+        protected void onCancelled(Drawable remoteIndicator) {
+            cacheAndReset(remoteIndicator);
+        }
+
+        private void cacheAndReset(Drawable remoteIndicator) {
+            if (remoteIndicator != null) {
+                sRemoteIndicatorCache.put(mResId, remoteIndicator.getConstantState());
+            }
+            mRemoteIndicatorLoader = null;
         }
     }
 }

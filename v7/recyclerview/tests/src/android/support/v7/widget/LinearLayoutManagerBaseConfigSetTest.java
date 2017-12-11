@@ -29,8 +29,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
 import android.graphics.Rect;
-import android.support.test.filters.MediumTest;
-import android.support.v4.view.ViewCompat;
+import android.support.test.filters.LargeTest;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewParent;
@@ -47,7 +46,7 @@ import java.util.Map;
  * Tests that rely on the basic configuration and does not do any additions / removals
  */
 @RunWith(Parameterized.class)
-@MediumTest
+@LargeTest
 public class LinearLayoutManagerBaseConfigSetTest extends BaseLinearLayoutManagerTest {
 
     private final Config mConfig;
@@ -246,9 +245,9 @@ public class LinearLayoutManagerBaseConfigSetTest extends BaseLinearLayoutManage
             @Override
             public void run() {
                 if (mConfig.mOrientation == HORIZONTAL) {
-                    ViewCompat.setTranslationX(vh.itemView, size * 2);
+                    vh.itemView.setTranslationX(size * 2);
                 } else {
-                    ViewCompat.setTranslationY(vh.itemView, size * 2);
+                    vh.itemView.setTranslationY(size * 2);
                 }
             }
         });
@@ -280,9 +279,9 @@ public class LinearLayoutManagerBaseConfigSetTest extends BaseLinearLayoutManage
             @Override
             public void run() {
                 if (mConfig.mOrientation == HORIZONTAL) {
-                    ViewCompat.setTranslationX(vh.itemView, -size * 2);
+                    vh.itemView.setTranslationX(-size * 2);
                 } else {
-                    ViewCompat.setTranslationY(vh.itemView, -size * 2);
+                    vh.itemView.setTranslationY(-size * 2);
                 }
             }
         });

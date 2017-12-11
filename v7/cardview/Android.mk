@@ -25,13 +25,8 @@ LOCAL_USE_AAPT2 := true
 LOCAL_MODULE := android-support-v7-cardview
 LOCAL_SDK_VERSION := $(SUPPORT_CURRENT_SDK_VERSION)
 LOCAL_SRC_FILES := \
-    $(call all-java-files-under,base) \
-    $(call all-java-files-under,gingerbread) \
-    $(call all-java-files-under,jellybean-mr1) \
-    $(call all-java-files-under,api21) \
-    $(call all-java-files-under,src)
+    $(call all-java-files-under,src/main/java)
 LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
-LOCAL_MANIFEST_FILE := AndroidManifest-make.xml
 LOCAL_SHARED_ANDROID_LIBRARIES := \
     android-support-annotations
 LOCAL_JAR_EXCLUDE_FILES := none

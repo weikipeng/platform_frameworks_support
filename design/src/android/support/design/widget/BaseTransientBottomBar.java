@@ -19,6 +19,9 @@ package android.support.design.widget;
 import static android.support.annotation.RestrictTo.Scope.LIBRARY_GROUP;
 import static android.support.design.widget.AnimationUtils.FAST_OUT_SLOW_IN_INTERPOLATOR;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.os.Build;
@@ -31,7 +34,6 @@ import android.support.annotation.NonNull;
 import android.support.annotation.RestrictTo;
 import android.support.design.R;
 import android.support.v4.view.ViewCompat;
-import android.support.v4.view.ViewPropertyAnimatorListenerAdapter;
 import android.support.v4.view.WindowInsetsCompat;
 import android.util.AttributeSet;
 import android.view.Gravity;
@@ -167,6 +169,12 @@ public abstract class BaseTransientBottomBar<B extends BaseTransientBottomBar<B>
     static final Handler sHandler;
     static final int MSG_SHOW = 0;
     static final int MSG_DISMISS = 1;
+
+    // On JB/KK versions of the platform sometimes View.setTranslationY does not
+    // result in layout / draw pass, and CoordinatorLayout relies on a draw pass to
+    // happen to sync vertical positioning of all its child views
+    private static final boolean USE_OFFSET_API = (Build.VERSION.SDK_INT >= 16)
+            && (Build.VERSION.SDK_INT <= 19);
 
     static {
         sHandler = new Handler(Looper.getMainLooper(), new Handler.Callback() {
@@ -486,27 +494,48 @@ public abstract class BaseTransientBottomBar<B extends BaseTransientBottomBar<B>
     }
 
     void animateViewIn() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            ViewCompat.setTranslationY(mView, mView.getHeight());
-            ViewCompat.animate(mView)
-                    .translationY(0f)
-                    .setInterpolator(FAST_OUT_SLOW_IN_INTERPOLATOR)
-                    .setDuration(ANIMATION_DURATION)
-                    .setListener(new ViewPropertyAnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationStart(View view) {
-                            mContentViewCallback.animateContentIn(
-                                    ANIMATION_DURATION - ANIMATION_FADE_DURATION,
-                                    ANIMATION_FADE_DURATION);
-                        }
+        if (Build.VERSION.SDK_INT >= 12) {
+            final int viewHeight = mView.getHeight();
+            if (USE_OFFSET_API) {
+                ViewCompat.offsetTopAndBottom(mView, viewHeight);
+            } else {
+                mView.setTranslationY(viewHeight);
+            }
+            final ValueAnimator animator = new ValueAnimator();
+            animator.setIntValues(viewHeight, 0);
+            animator.setInterpolator(FAST_OUT_SLOW_IN_INTERPOLATOR);
+            animator.setDuration(ANIMATION_DURATION);
+            animator.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationStart(Animator animator) {
+                    mContentViewCallback.animateContentIn(
+                            ANIMATION_DURATION - ANIMATION_FADE_DURATION,
+                            ANIMATION_FADE_DURATION);
+                }
 
-                        @Override
-                        public void onAnimationEnd(View view) {
-                            onViewShown();
-                        }
-                    }).start();
+                @Override
+                public void onAnimationEnd(Animator animator) {
+                    onViewShown();
+                }
+            });
+            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                private int mPreviousAnimatedIntValue = viewHeight;
+
+                @Override
+                public void onAnimationUpdate(ValueAnimator animator) {
+                    int currentAnimatedIntValue = (int) animator.getAnimatedValue();
+                    if (USE_OFFSET_API) {
+                        ViewCompat.offsetTopAndBottom(mView,
+                                currentAnimatedIntValue - mPreviousAnimatedIntValue);
+                    } else {
+                        mView.setTranslationY(currentAnimatedIntValue);
+                    }
+                    mPreviousAnimatedIntValue = currentAnimatedIntValue;
+                }
+            });
+            animator.start();
         } else {
-            Animation anim = AnimationUtils.loadAnimation(mView.getContext(),
+            final Animation anim = AnimationUtils.loadAnimation(mView.getContext(),
                     R.anim.design_snackbar_in);
             anim.setInterpolator(FAST_OUT_SLOW_IN_INTERPOLATOR);
             anim.setDuration(ANIMATION_DURATION);
@@ -527,24 +556,40 @@ public abstract class BaseTransientBottomBar<B extends BaseTransientBottomBar<B>
     }
 
     private void animateViewOut(final int event) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH) {
-            ViewCompat.animate(mView)
-                    .translationY(mView.getHeight())
-                    .setInterpolator(FAST_OUT_SLOW_IN_INTERPOLATOR)
-                    .setDuration(ANIMATION_DURATION)
-                    .setListener(new ViewPropertyAnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationStart(View view) {
-                            mContentViewCallback.animateContentOut(0, ANIMATION_FADE_DURATION);
-                        }
+        if (Build.VERSION.SDK_INT >= 12) {
+            final ValueAnimator animator = new ValueAnimator();
+            animator.setIntValues(0, mView.getHeight());
+            animator.setInterpolator(FAST_OUT_SLOW_IN_INTERPOLATOR);
+            animator.setDuration(ANIMATION_DURATION);
+            animator.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationStart(Animator animator) {
+                    mContentViewCallback.animateContentOut(0, ANIMATION_FADE_DURATION);
+                }
 
-                        @Override
-                        public void onAnimationEnd(View view) {
-                            onViewHidden(event);
-                        }
-                    }).start();
+                @Override
+                public void onAnimationEnd(Animator animator) {
+                    onViewHidden(event);
+                }
+            });
+            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                private int mPreviousAnimatedIntValue = 0;
+
+                @Override
+                public void onAnimationUpdate(ValueAnimator animator) {
+                    int currentAnimatedIntValue = (int) animator.getAnimatedValue();
+                    if (USE_OFFSET_API) {
+                        ViewCompat.offsetTopAndBottom(mView,
+                                currentAnimatedIntValue - mPreviousAnimatedIntValue);
+                    } else {
+                        mView.setTranslationY(currentAnimatedIntValue);
+                    }
+                    mPreviousAnimatedIntValue = currentAnimatedIntValue;
+                }
+            });
+            animator.start();
         } else {
-            Animation anim = AnimationUtils.loadAnimation(mView.getContext(),
+            final Animation anim = AnimationUtils.loadAnimation(mView.getContext(),
                     R.anim.design_snackbar_out);
             anim.setInterpolator(FAST_OUT_SLOW_IN_INTERPOLATOR);
             anim.setDuration(ANIMATION_DURATION);

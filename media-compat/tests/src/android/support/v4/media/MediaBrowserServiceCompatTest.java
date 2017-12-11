@@ -26,9 +26,10 @@ import static junit.framework.Assert.assertTrue;
 import android.content.ComponentName;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.test.filters.LargeTest;
+import android.support.test.filters.MediumTest;
 import android.support.test.filters.SmallTest;
 import android.support.test.runner.AndroidJUnit4;
+import android.support.testutils.PollingCheck;
 import android.support.v4.media.MediaBrowserCompat.MediaItem;
 
 import org.junit.Before;
@@ -143,7 +144,7 @@ public class MediaBrowserServiceCompatTest {
     }
 
     @Test
-    @LargeTest
+    @MediumTest
     public void testDelayedNotifyChildrenChanged() throws Exception {
         synchronized (mWaitLock) {
             mSubscriptionCallback.reset();
@@ -168,9 +169,8 @@ public class MediaBrowserServiceCompatTest {
         }
     }
 
-    // TODO(hdmoon): Uncomment after fixing failing tests. (Fails on API >= 24)
-    // @Test
-    // @SmallTest
+    @Test
+    @MediumTest
     public void testDelayedItem() throws Exception {
         synchronized (mWaitLock) {
             mItemCallback.reset();
@@ -381,6 +381,8 @@ public class MediaBrowserServiceCompatTest {
     @Test
     @SmallTest
     public void testDelayedSetSessionToken() throws Exception {
+        // This test has no meaning in API 21. The framework MediaBrowserService just connects to
+        // the media browser without waiting setMediaSession() to be called.
         if (Build.VERSION.SDK_INT == 21) {
             return;
         }
@@ -404,6 +406,11 @@ public class MediaBrowserServiceCompatTest {
             StubMediaBrowserServiceCompatWithDelayedMediaSession.sInstance.callSetSessionToken();
             mWaitLock.wait(TIME_OUT_MS);
             assertEquals(1, callback.mConnectedCount);
+
+            if (Build.VERSION.SDK_INT >= 21) {
+                assertNotNull(
+                        mMediaBrowserForDelayedMediaSession.getSessionToken().getExtraBinder());
+            }
         }
     }
 
@@ -575,6 +582,5 @@ public class MediaBrowserServiceCompatTest {
                 mWaitLock.notify();
             }
         }
-    };
-
+    }
 }

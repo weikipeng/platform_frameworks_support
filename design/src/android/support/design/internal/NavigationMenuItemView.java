@@ -35,6 +35,7 @@ import android.support.v4.view.accessibility.AccessibilityNodeInfoCompat;
 import android.support.v4.widget.TextViewCompat;
 import android.support.v7.view.menu.MenuItemImpl;
 import android.support.v7.view.menu.MenuView;
+import android.support.v7.widget.TooltipCompat;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -95,7 +96,7 @@ public class NavigationMenuItemView extends ForegroundLinearLayout implements Me
         LayoutInflater.from(context).inflate(R.layout.design_navigation_menu_item, this, true);
         mIconSize = context.getResources().getDimensionPixelSize(
                 R.dimen.design_navigation_icon_size);
-        mTextView = (CheckedTextView) findViewById(R.id.design_menu_item_text);
+        mTextView = findViewById(R.id.design_menu_item_text);
         mTextView.setDuplicateParentStateEnabled(true);
         ViewCompat.setAccessibilityDelegate(mTextView, mAccessibilityDelegate);
     }
@@ -116,6 +117,8 @@ public class NavigationMenuItemView extends ForegroundLinearLayout implements Me
         setTitle(itemData.getTitle());
         setIcon(itemData.getIcon());
         setActionView(itemData.getActionView());
+        setContentDescription(itemData.getContentDescription());
+        TooltipCompat.setTooltipText(this, itemData.getTooltipText());
         adjustAppearance();
     }
 

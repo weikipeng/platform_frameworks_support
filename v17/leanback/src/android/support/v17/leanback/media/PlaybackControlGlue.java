@@ -36,6 +36,7 @@ import android.view.KeyEvent;
 import android.view.View;
 
 import java.lang.ref.WeakReference;
+import java.util.List;
 
 /**
  * A helper class for managing a {@link PlaybackControlsRow}
@@ -324,7 +325,7 @@ public abstract class PlaybackControlGlue extends PlaybackGlue
     public void setFadingEnabled(boolean enable) {
         mFadeWhenPlaying = enable;
         if (!mFadeWhenPlaying && getHost() != null) {
-            getHost().setFadingEnabled(false);
+            getHost().setControlsOverlayAutoHideEnabled(false);
         }
     }
 
@@ -701,16 +702,22 @@ public abstract class PlaybackControlGlue extends PlaybackGlue
         }
 
         if (mFadeWhenPlaying && getHost() != null) {
-            getHost().setFadingEnabled(playbackSpeed == PLAYBACK_SPEED_NORMAL);
+            getHost().setControlsOverlayAutoHideEnabled(playbackSpeed == PLAYBACK_SPEED_NORMAL);
         }
 
         if (mPlayPauseAction != null) {
             int index = playbackSpeed == PLAYBACK_SPEED_PAUSED
-                    ? PlaybackControlsRow.PlayPauseAction.PLAY
-                    : PlaybackControlsRow.PlayPauseAction.PAUSE;
+                    ? PlaybackControlsRow.PlayPauseAction.INDEX_PLAY
+                    : PlaybackControlsRow.PlayPauseAction.INDEX_PAUSE;
             if (mPlayPauseAction.getIndex() != index) {
                 mPlayPauseAction.setIndex(index);
                 notifyItemChanged(primaryActionsAdapter, mPlayPauseAction);
+            }
+        }
+        List<PlayerCallback> callbacks = getPlayerCallbacks();
+        if (callbacks != null) {
+            for (int i = 0, size = callbacks.size(); i < size; i++) {
+                callbacks.get(i).onPlayStateChanged(this);
             }
         }
     }
@@ -763,6 +770,11 @@ public abstract class PlaybackControlGlue extends PlaybackGlue
      * Returns true if media is currently playing.
      */
     public abstract boolean isMediaPlaying();
+
+    @Override
+    public boolean isPlaying() {
+        return isMediaPlaying();
+    }
 
     /**
      * Returns the title of the media item.

@@ -77,7 +77,7 @@ public class ShadowOverlayContainer extends FrameLayout {
     private int mRoundedCornerRadius;
     private static final Rect sTempRect = new Rect();
     private Paint mOverlayPaint;
-    private int mOverlayColor;
+    int mOverlayColor;
 
     /**
      * Create ShadowOverlayContainer and auto select shadow type.
@@ -296,8 +296,8 @@ public class ShadowOverlayContainer extends FrameLayout {
         } else {
             addView(view);
         }
-        if (mRoundedCorners && mShadowType == SHADOW_STATIC) {
-            RoundedRectHelper.getInstance().setClipToRoundedOutline(view, true);
+        if (mRoundedCorners && mShadowType != SHADOW_DYNAMIC) {
+            RoundedRectHelper.getInstance().setClipToRoundedOutline(this, true);
         }
         mWrappedView = view;
     }

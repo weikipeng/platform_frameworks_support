@@ -54,6 +54,11 @@
      <public type="attr" name="arrowHeadLength"/>
      <public type="attr" name="arrowShaftLength"/>
      <public type="attr" name="autoCompleteTextViewStyle"/>
+     <public type="attr" name="autoSizeTextType"/>
+     <public type="attr" name="autoSizeStepGranularity"/>
+     <public type="attr" name="autoSizePresetSizes"/>
+     <public type="attr" name="autoSizeMinTextSize"/>
+     <public type="attr" name="autoSizeMaxTextSize"/>
      <public type="attr" name="background"/>
      <public type="attr" name="backgroundSplit"/>
      <public type="attr" name="backgroundStacked"/>
@@ -84,6 +89,7 @@
      <public type="attr" name="colorControlActivated"/>
      <public type="attr" name="colorControlHighlight"/>
      <public type="attr" name="colorControlNormal"/>
+     <public type="attr" name="colorError"/>
      <public type="attr" name="colorPrimary"/>
      <public type="attr" name="colorPrimaryDark"/>
      <public type="attr" name="commitIcon"/>
@@ -108,6 +114,7 @@
      <public type="attr" name="editTextColor"/>
      <public type="attr" name="editTextStyle"/>
      <public type="attr" name="elevation"/>
+     <public type="attr" name="fontFamily"/>
      <public type="attr" name="gapBetweenBars"/>
      <public type="attr" name="goIcon"/>
      <public type="attr" name="height"/>
@@ -116,6 +123,8 @@
      <public type="attr" name="homeLayout"/>
      <public type="attr" name="icon"/>
      <public type="attr" name="iconifiedByDefault"/>
+     <public type="attr" name="iconTint"/>
+     <public type="attr" name="iconTintMode"/>
      <public type="attr" name="imageButtonStyle"/>
      <public type="attr" name="indeterminateProgressStyle"/>
      <public type="attr" name="isLightTheme"/>

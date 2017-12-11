@@ -21,22 +21,28 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.support.test.InstrumentationRegistry;
-import android.support.test.filters.MediumTest;
+import android.support.test.filters.LargeTest;
+import android.support.test.filters.SdkSuppress;
 import android.support.test.runner.AndroidJUnit4;
+import android.support.v17.leanback.R;
 import android.support.v17.leanback.testutils.PollingCheck;
 import android.support.v17.leanback.widget.ArrayObjectAdapter;
 import android.support.v17.leanback.widget.HeaderItem;
+import android.support.v17.leanback.widget.HorizontalGridView;
 import android.support.v17.leanback.widget.ItemBridgeAdapter;
 import android.support.v17.leanback.widget.ListRow;
 import android.support.v17.leanback.widget.ListRowPresenter;
+import android.support.v17.leanback.widget.ObjectAdapter;
 import android.support.v17.leanback.widget.OnItemViewClickedListener;
 import android.support.v17.leanback.widget.Presenter;
 import android.support.v17.leanback.widget.Row;
 import android.support.v17.leanback.widget.RowPresenter;
+import android.support.v17.leanback.widget.SinglePresenterSelector;
 import android.support.v17.leanback.widget.VerticalGridView;
 import android.view.KeyEvent;
 import android.view.View;
@@ -45,8 +51,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 
-@MediumTest
+@LargeTest
 @RunWith(AndroidJUnit4.class)
 public class RowsFragmentTest extends SingleFragmentTestBase {
 
@@ -83,7 +90,7 @@ public class RowsFragmentTest extends SingleFragmentTestBase {
     }
 
     @Test
-    public void defaultAlignment() throws InterruptedException {
+    public void defaultAlignment() throws Throwable {
         SingleFragmentTestActivity activity = launchAndWaitActivity(F_defaultAlignment.class, 1000);
 
         final Rect rect = new Rect();
@@ -96,6 +103,7 @@ public class RowsFragmentTest extends SingleFragmentTestBase {
         assertEquals("First row is initially aligned to top of screen", 0, rect.top);
 
         sendKeys(KeyEvent.KEYCODE_DPAD_DOWN);
+        waitForScrollIdle(gridView);
         View row1 = gridView.findViewHolderForAdapterPosition(1).itemView;
         PollingCheck.waitFor(new PollingCheck.ViewStableOnScreen(row1));
 
@@ -227,6 +235,7 @@ public class RowsFragmentTest extends SingleFragmentTestBase {
 
         InstrumentationRegistry.getInstrumentation().runOnMainSync(
                 new Runnable() {
+                    @Override
                     public void run() {
                         activity.recreate();
                     }
@@ -296,4 +305,160 @@ public class RowsFragmentTest extends SingleFragmentTestBase {
         assertSame(prefetchedListRowVh.getItemViewHolder(0), fragment.mLastClickedItemViewHolder);
     }
 
+    @Test
+    public void changeHasStableIdToTrueAfterViewCreated() throws InterruptedException {
+        SingleFragmentTestActivity activity =
+                launchAndWaitActivity(RowsFragment.class, 2000);
+        final RowsFragment fragment = (RowsFragment) activity.getTestFragment();
+
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(
+                new Runnable() {
+                    public void run() {
+                        ObjectAdapter adapter = new ObjectAdapter() {
+                            @Override
+                            public int size() {
+                                return 0;
+                            }
+
+                            @Override
+                            public Object get(int position) {
+                                return null;
+                            }
+
+                            @Override
+                            public long getId(int position) {
+                                return 1;
+                            }
+                        };
+                        adapter.setHasStableIds(true);
+                        fragment.setAdapter(adapter);
+                    }
+                }
+        );
+    }
+
+    static class StableIdAdapter extends ObjectAdapter {
+        ArrayList<Integer> mList = new ArrayList();
+
+        @Override
+        public long getId(int position) {
+            return mList.get(position).longValue();
+        }
+
+        @Override
+        public Object get(int position) {
+            return mList.get(position);
+        }
+
+        @Override
+        public int size() {
+            return mList.size();
+        }
+    }
+
+    public static class F_rowNotifyItemRangeChange extends BrowseFragment {
+
+        @Override
+        public void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            ListRowPresenter lrp = new ListRowPresenter();
+            final ArrayObjectAdapter adapter = new ArrayObjectAdapter(lrp);
+            for (int i = 0; i < 2; i++) {
+                StableIdAdapter listRowAdapter = new StableIdAdapter();
+                listRowAdapter.setHasStableIds(true);
+                listRowAdapter.setPresenterSelector(
+                        new SinglePresenterSelector(sCardPresenter));
+                int index = 0;
+                listRowAdapter.mList.add(index++);
+                listRowAdapter.mList.add(index++);
+                listRowAdapter.mList.add(index++);
+                HeaderItem header = new HeaderItem(i, "Row " + i);
+                adapter.add(new ListRow(header, listRowAdapter));
+            }
+            setAdapter(adapter);
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    StableIdAdapter rowAdapter = (StableIdAdapter)
+                            ((ListRow) adapter.get(1)).getAdapter();
+                    rowAdapter.notifyItemRangeChanged(0, 3);
+                }
+            }, 500);
+        }
+    }
+
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.LOLLIPOP)
+    @Test
+    public void rowNotifyItemRangeChange() throws InterruptedException {
+        SingleFragmentTestActivity activity = launchAndWaitActivity(
+                RowsFragmentTest.F_rowNotifyItemRangeChange.class, 2000);
+
+        VerticalGridView verticalGridView = ((BrowseFragment) activity.getTestFragment())
+                .getRowsFragment().getVerticalGridView();
+        for (int i = 0; i < verticalGridView.getChildCount(); i++) {
+            HorizontalGridView horizontalGridView = verticalGridView.getChildAt(i)
+                    .findViewById(R.id.row_content);
+            for (int j = 0; j < horizontalGridView.getChildCount(); j++) {
+                assertEquals(horizontalGridView.getPaddingTop(),
+                        horizontalGridView.getChildAt(j).getTop());
+            }
+        }
+    }
+
+    public static class F_rowNotifyItemRangeChangeWithTransition extends BrowseFragment {
+
+        @Override
+        public void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            ListRowPresenter lrp = new ListRowPresenter();
+            prepareEntranceTransition();
+            final ArrayObjectAdapter adapter = new ArrayObjectAdapter(lrp);
+            for (int i = 0; i < 2; i++) {
+                StableIdAdapter listRowAdapter = new StableIdAdapter();
+                listRowAdapter.setHasStableIds(true);
+                listRowAdapter.setPresenterSelector(
+                        new SinglePresenterSelector(sCardPresenter));
+                int index = 0;
+                listRowAdapter.mList.add(index++);
+                listRowAdapter.mList.add(index++);
+                listRowAdapter.mList.add(index++);
+                HeaderItem header = new HeaderItem(i, "Row " + i);
+                adapter.add(new ListRow(header, listRowAdapter));
+            }
+            setAdapter(adapter);
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    StableIdAdapter rowAdapter = (StableIdAdapter)
+                            ((ListRow) adapter.get(1)).getAdapter();
+                    rowAdapter.notifyItemRangeChanged(0, 3);
+                }
+            }, 500);
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    startEntranceTransition();
+                }
+            }, 520);
+        }
+    }
+
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.LOLLIPOP)
+    @Test
+    public void rowNotifyItemRangeChangeWithTransition() throws InterruptedException {
+        SingleFragmentTestActivity activity = launchAndWaitActivity(
+                        RowsFragmentTest.F_rowNotifyItemRangeChangeWithTransition.class, 3000);
+
+        VerticalGridView verticalGridView = ((BrowseFragment) activity.getTestFragment())
+                .getRowsFragment().getVerticalGridView();
+        for (int i = 0; i < verticalGridView.getChildCount(); i++) {
+            HorizontalGridView horizontalGridView = verticalGridView.getChildAt(i)
+                    .findViewById(R.id.row_content);
+            for (int j = 0; j < horizontalGridView.getChildCount(); j++) {
+                assertEquals(horizontalGridView.getPaddingTop(),
+                        horizontalGridView.getChildAt(j).getTop());
+                assertEquals(0, horizontalGridView.getChildAt(j).getTranslationY(), 0.1f);
+            }
+        }
+    }
 }

@@ -1,3 +1,6 @@
+// CHECKSTYLE:OFF Generated code
+/* This file is auto-generated from VideoSupportFragment.java.  DO NOT MODIFY. */
+
 /*
  * Copyright (C) 2016 The Android Open Source Project
  *
@@ -38,7 +41,7 @@ public class VideoFragment extends PlaybackFragment {
     public View onCreateView(
             LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         ViewGroup root = (ViewGroup) super.onCreateView(inflater, container, savedInstanceState);
-        mVideoSurface = (SurfaceView) LayoutInflater.from(FragmentUtil.getContext(this)).inflate(
+        mVideoSurface = (SurfaceView) LayoutInflater.from(FragmentUtil.getContext(VideoFragment.this)).inflate(
                 R.layout.lb_video_surface, root, false);
         root.addView(mVideoSurface, 0);
         mVideoSurface.getHolder().addCallback(new SurfaceHolder.Callback() {
@@ -81,6 +84,24 @@ public class VideoFragment extends PlaybackFragment {
                 mMediaPlaybackCallback.surfaceCreated(mVideoSurface.getHolder());
             }
         }
+    }
+
+    @Override
+    protected void onVideoSizeChanged(int width, int height) {
+        int screenWidth = getView().getWidth();
+        int screenHeight = getView().getHeight();
+
+        ViewGroup.LayoutParams p = mVideoSurface.getLayoutParams();
+        if (screenWidth * height > width * screenHeight) {
+            // fit in screen height
+            p.height = screenHeight;
+            p.width = screenHeight * width / height;
+        } else {
+            // fit in screen width
+            p.width = screenWidth;
+            p.height = screenWidth * height / width;
+        }
+        mVideoSurface.setLayoutParams(p);
     }
 
     /**

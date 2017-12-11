@@ -38,17 +38,25 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import android.app.Activity;
 import android.content.res.Resources;
+import android.os.Build;
 import android.os.Parcelable;
 import android.support.annotation.ColorInt;
 import android.support.design.test.R;
 import android.support.design.testutils.TestDrawable;
 import android.support.design.testutils.TestUtilsMatchers;
 import android.support.test.annotation.UiThreadTest;
+import android.support.test.filters.LargeTest;
+import android.support.test.filters.SdkSuppress;
 import android.support.test.filters.SmallTest;
 import android.support.v4.content.res.ResourcesCompat;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.PointerIcon;
+import android.view.View;
+import android.view.ViewGroup;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -110,7 +118,7 @@ public class BottomNavigationViewTest
     }
 
     @Test
-    @SmallTest
+    @LargeTest
     public void testNavigationSelectionListener() {
         BottomNavigationView.OnNavigationItemSelectedListener mockedListener =
                 mock(BottomNavigationView.OnNavigationItemSelectedListener.class);
@@ -376,6 +384,27 @@ public class BottomNavigationViewTest
     @UiThreadTest
     @Test
     @SmallTest
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.N)
+    public void testPointerIcon() throws Throwable {
+        final Activity activity = mActivityTestRule.getActivity();
+        final PointerIcon expectedIcon = PointerIcon.getSystemIcon(activity, PointerIcon.TYPE_HAND);
+        final MotionEvent event = MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_MOVE, 0, 0, 0);
+        final Menu menu = mBottomNavigation.getMenu();
+        for (int i = 0; i < menu.size(); i++) {
+            final MenuItem item = menu.getItem(i);
+            assertTrue(item.isEnabled());
+            final View itemView = activity.findViewById(item.getItemId());
+            assertEquals(expectedIcon, itemView.onResolvePointerIcon(event, 0));
+            item.setEnabled(false);
+            assertEquals(null, itemView.onResolvePointerIcon(event, 0));
+            item.setEnabled(true);
+            assertEquals(expectedIcon, itemView.onResolvePointerIcon(event, 0));
+        }
+    }
+
+    @UiThreadTest
+    @Test
+    @SmallTest
     public void testClearingMenu() throws Throwable {
         mBottomNavigation.getMenu().clear();
         assertEquals(0, mBottomNavigation.getMenu().size());
@@ -404,6 +433,22 @@ public class BottomNavigationViewTest
                 assertTrue(testView.getMenu().findItem(R.id.destination_profile).isChecked());
             }
         });
+    }
+
+    @UiThreadTest
+    @Test
+    @SmallTest
+    public void testContentDescription() {
+        ViewGroup menuView = (ViewGroup) mBottomNavigation.getChildAt(0);
+        final int count = menuView.getChildCount();
+        for (int i = 0; i < count; i++) {
+            View child = menuView.getChildAt(i);
+            // We're using the same strings for content description
+            assertEquals(mMenuStringContent.get(child.getId()),
+                    child.getContentDescription().toString());
+        }
+
+        menuView.getChildAt(0).getContentDescription();
     }
 
     private void checkAndVerifyExclusiveItem(final Menu menu, final int id) throws Throwable {

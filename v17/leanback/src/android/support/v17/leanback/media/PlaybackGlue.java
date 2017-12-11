@@ -19,6 +19,9 @@ package android.support.v17.leanback.media;
 import android.content.Context;
 import android.support.annotation.CallSuper;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Base class for abstraction of media play/pause feature. A subclass of PlaybackGlue will contain
  * implementation of Media Player or a connection to playback Service. App initializes
@@ -42,14 +45,32 @@ public abstract class PlaybackGlue {
     private PlaybackGlueHost mPlaybackGlueHost;
 
     /**
-     * Interface to allow clients to take action once the video is ready to play.
+     * Interface to allow clients to take action once the video is ready to play and start stop.
      */
     public abstract static class PlayerCallback {
         /**
-         * This method is fired when the video is ready for playback.
+         * Event for {@link #isPrepared()} changed.
+         * @param glue The PlaybackGlue that has changed {@link #isPrepared()}.
          */
-        public abstract void onReadyForPlayback();
+        public void onPreparedStateChanged(PlaybackGlue glue) {
+        }
+
+        /**
+         * Event for Play/Pause state change. See {@link #isPlaying()}}.
+         * @param glue The PlaybackGlue that has changed playing or pausing state.
+         */
+        public void onPlayStateChanged(PlaybackGlue glue) {
+        }
+
+        /**
+         * Event of the current media is finished.
+         * @param glue The PlaybackGlue that has finished current media playing.
+         */
+        public void onPlayCompleted(PlaybackGlue glue) {
+        }
     }
+
+    ArrayList<PlayerCallback> mPlayerCallbacks;
 
     /**
      * Constructor.
@@ -66,26 +87,76 @@ public abstract class PlaybackGlue {
     }
 
     /**
-     * Returns true when the media player is ready to start media playback. Subclasses must
-     * implement this method correctly. When returning false, app may listen to
-     * {@link PlayerCallback#onReadyForPlayback()} event.
-     *
-     * @see PlayerCallback#onReadyForPlayback()
+     * Returns true when the media player is prepared to start media playback. When returning false,
+     * app may listen to {@link PlayerCallback#onPreparedStateChanged(PlaybackGlue)} event.
+     * @return True if prepared, false otherwise.
      */
-    public boolean isReadyForPlayback() {
+    public boolean isPrepared() {
         return true;
     }
 
     /**
-     * Sets the {@link PlayerCallback} callback.
+     * Add a PlayerCallback.
+     * @param playerCallback The callback to add.
      */
-    public void setPlayerCallback(PlayerCallback playerCallback) {
+    public void addPlayerCallback(PlayerCallback playerCallback) {
+        if (mPlayerCallbacks == null) {
+            mPlayerCallbacks = new ArrayList();
+        }
+        mPlayerCallbacks.add(playerCallback);
     }
 
     /**
-     * Starts the media player.
+     * Remove a PlayerCallback.
+     * @param callback The callback to remove.
+     */
+    public void removePlayerCallback(PlayerCallback callback) {
+        if (mPlayerCallbacks != null) {
+            mPlayerCallbacks.remove(callback);
+        }
+    }
+
+    /**
+     * @return A snapshot of list of PlayerCallbacks set on the Glue.
+     */
+    protected List<PlayerCallback> getPlayerCallbacks() {
+        if (mPlayerCallbacks == null) {
+            return null;
+        }
+        return new ArrayList(mPlayerCallbacks);
+    }
+
+    /**
+     * Returns true if media is currently playing.
+     */
+    public boolean isPlaying() {
+        return false;
+    }
+
+    /**
+     * Starts the media player. Does nothing if {@link #isPrepared()} is false. To wait
+     * {@link #isPrepared()} to be true before playing, use {@link #playWhenPrepared()}.
      */
     public void play() {
+    }
+
+    /**
+     * Starts play when {@link #isPrepared()} becomes true.
+     */
+    public void playWhenPrepared() {
+        if (isPrepared()) {
+            play();
+        } else {
+            addPlayerCallback(new PlayerCallback() {
+                @Override
+                public void onPreparedStateChanged(PlaybackGlue glue) {
+                    if (glue.isPrepared()) {
+                        removePlayerCallback(this);
+                        play();
+                    }
+                }
+            });
+        }
     }
 
     /**
@@ -179,9 +250,7 @@ public abstract class PlaybackGlue {
 
             @Override
             public void onHostDestroy() {
-                if (mPlaybackGlueHost != null) {
-                    mPlaybackGlueHost.attachToGlue(null);
-                }
+                setHost(null);
             }
         });
     }

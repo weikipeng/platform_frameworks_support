@@ -33,17 +33,23 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.os.Build;
 import android.support.design.test.R;
 import android.support.test.annotation.UiThreadTest;
 import android.support.test.espresso.Espresso;
 import android.support.test.espresso.IdlingResource;
 import android.support.test.espresso.NoMatchingViewException;
 import android.support.test.espresso.ViewAssertion;
+import android.support.test.filters.SdkSuppress;
 import android.support.test.filters.SmallTest;
 import android.support.v4.view.ViewCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.view.InflateException;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
+import android.view.PointerIcon;
 import android.view.View;
 
 import org.junit.Test;
@@ -192,6 +198,24 @@ public class TabLayoutTest extends BaseInstrumentationTestCase<AppCompatActivity
         assertTabCustomViewSelected(tabs);
     }
 
+    @Test
+    @UiThreadTest
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.N)
+    public void testPointerIcon() {
+        final LayoutInflater inflater = LayoutInflater.from(mActivityTestRule.getActivity());
+        final TabLayout tabLayout = (TabLayout) inflater.inflate(R.layout.design_tabs_items, null);
+        final PointerIcon expectedIcon =
+                PointerIcon.getSystemIcon(mActivityTestRule.getActivity(), PointerIcon.TYPE_HAND);
+
+        final int tabCount = tabLayout.getTabCount();
+        assertEquals(3, tabCount);
+
+        final MotionEvent event = MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_MOVE, 0, 0, 0);
+        for (int i = 0; i < tabCount; i++) {
+            assertEquals(expectedIcon, tabLayout.getTabAt(i).mView.onResolvePointerIcon(event, 0));
+        }
+    }
+
     private static void assertTabCustomViewSelected(final TabLayout tabLayout) {
         for (int i = 0, count = tabLayout.getTabCount(); i < count; i++) {
             final TabLayout.Tab tab = tabLayout.getTabAt(i);
@@ -207,6 +231,7 @@ public class TabLayoutTest extends BaseInstrumentationTestCase<AppCompatActivity
         testSetScrollPosition(true);
     }
 
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.JELLY_BEAN_MR1)
     @Test
     public void setScrollPositionRtl() throws Throwable {
         testSetScrollPosition(false);
@@ -266,14 +291,14 @@ public class TabLayoutTest extends BaseInstrumentationTestCase<AppCompatActivity
         private ResourceCallback mCallback;
 
         TabLayoutScrollIdlingResource(final TabLayout tabLayout) {
-            tabLayout.setScrollAnimatorListener(new ValueAnimatorCompat.AnimatorListenerAdapter() {
+            tabLayout.setScrollAnimatorListener(new AnimatorListenerAdapter() {
                 @Override
-                public void onAnimationStart(ValueAnimatorCompat animator) {
+                public void onAnimationStart(Animator animator) {
                     setIdle(false);
                 }
 
                 @Override
-                public void onAnimationEnd(ValueAnimatorCompat animator) {
+                public void onAnimationEnd(Animator animator) {
                     setIdle(true);
                 }
             });

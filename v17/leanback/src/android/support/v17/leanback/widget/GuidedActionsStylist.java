@@ -21,6 +21,7 @@ import static android.support.v17.leanback.widget.GuidedAction.EDITING_TITLE;
 
 import android.animation.Animator;
 import android.animation.AnimatorInflater;
+import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Rect;
@@ -37,6 +38,7 @@ import android.support.v17.leanback.widget.GuidedActionAdapter.EditListener;
 import android.support.v17.leanback.widget.picker.DatePicker;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -151,6 +153,7 @@ public class GuidedActionsStylist implements FragmentAnimationProvider {
     public static final int VIEW_TYPE_DATE_PICKER = 1;
 
     final static ItemAlignmentFacet sGuidedActionItemAlignFacet;
+
     static {
         sGuidedActionItemAlignFacet = new ItemAlignmentFacet();
         ItemAlignmentFacet.ItemAlignmentDef alignedDef = new ItemAlignmentFacet.ItemAlignmentDef();
@@ -179,6 +182,7 @@ public class GuidedActionsStylist implements FragmentAnimationProvider {
         ImageView mChevronView;
         int mEditingMode = EDITING_NONE;
         private final boolean mIsSubAction;
+        Animator mPressAnimator;
 
         final AccessibilityDelegate mDelegate = new AccessibilityDelegate() {
             @Override
@@ -363,6 +367,28 @@ public class GuidedActionsStylist implements FragmentAnimationProvider {
                 return sGuidedActionItemAlignFacet;
             }
             return null;
+        }
+
+        void press(boolean pressed) {
+            if (mPressAnimator != null) {
+                mPressAnimator.cancel();
+                mPressAnimator = null;
+            }
+            final int themeAttrId = pressed ? R.attr.guidedActionPressedAnimation :
+                    R.attr.guidedActionUnpressedAnimation;
+            Context ctx = itemView.getContext();
+            TypedValue typedValue = new TypedValue();
+            if (ctx.getTheme().resolveAttribute(themeAttrId, typedValue, true)) {
+                mPressAnimator = AnimatorInflater.loadAnimator(ctx, typedValue.resourceId);
+                mPressAnimator.setTarget(itemView);
+                mPressAnimator.addListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        mPressAnimator = null;
+                    }
+                });
+                mPressAnimator.start();
+            }
         }
     }
 
@@ -649,9 +675,9 @@ public class GuidedActionsStylist implements FragmentAnimationProvider {
      * @return The view to be added to the caller's view hierarchy.
      */
     public void onBindViewHolder(ViewHolder vh, GuidedAction action) {
-
         vh.mAction = action;
         if (vh.mTitleView != null) {
+            vh.mTitleView.setInputType(action.getInputType());
             vh.mTitleView.setText(action.getTitle());
             vh.mTitleView.setAlpha(action.isEnabled() ? mEnabledTextAlpha : mDisabledTextAlpha);
             vh.mTitleView.setFocusable(false);
@@ -659,6 +685,7 @@ public class GuidedActionsStylist implements FragmentAnimationProvider {
             vh.mTitleView.setLongClickable(false);
         }
         if (vh.mDescriptionView != null) {
+            vh.mDescriptionView.setInputType(action.getDescriptionInputType());
             vh.mDescriptionView.setText(action.getDescription());
             vh.mDescriptionView.setVisibility(TextUtils.isEmpty(action.getDescription())
                     ? View.GONE : View.VISIBLE);
@@ -677,7 +704,11 @@ public class GuidedActionsStylist implements FragmentAnimationProvider {
         if (action.hasMultilineDescription()) {
             if (vh.mTitleView != null) {
                 setMaxLines(vh.mTitleView, mTitleMaxLines);
+                vh.mTitleView.setInputType(
+                        vh.mTitleView.getInputType() | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
                 if (vh.mDescriptionView != null) {
+                    vh.mDescriptionView.setInputType(vh.mDescriptionView.getInputType()
+                            | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
                     vh.mDescriptionView.setMaxHeight(getDescriptionMaxHeight(
                             vh.itemView.getContext(), vh.mTitleView));
                 }
@@ -704,6 +735,26 @@ public class GuidedActionsStylist implements FragmentAnimationProvider {
         setupImeOptions(vh, action);
 
         updateChevronAndVisibility(vh);
+    }
+
+    /**
+     * Switches action to edit mode and pops up the keyboard.
+     */
+    public void openInEditMode(GuidedAction action) {
+        final GuidedActionAdapter guidedActionAdapter =
+                (GuidedActionAdapter) getActionsGridView().getAdapter();
+        int actionIndex = guidedActionAdapter.getActions().indexOf(action);
+        if (actionIndex < 0 || !action.isEditable()) {
+            return;
+        }
+
+        getActionsGridView().setSelectedPosition(actionIndex, new ViewHolderTask() {
+            @Override
+            public void run(RecyclerView.ViewHolder viewHolder) {
+                ViewHolder vh = (ViewHolder) viewHolder;
+                guidedActionAdapter.mGroup.openIme(guidedActionAdapter, vh);
+            }
+        });
     }
 
     private static void setMaxLines(TextView view, int maxLines) {
@@ -845,9 +896,7 @@ public class GuidedActionsStylist implements FragmentAnimationProvider {
      * @param pressed True if the action has been pressed, false if it has been unpressed.
      */
     public void onAnimateItemPressed(ViewHolder vh, boolean pressed) {
-        int attr = pressed ? R.attr.guidedActionPressedAnimation :
-                R.attr.guidedActionUnpressedAnimation;
-        createAnimator(vh.itemView, attr).start();
+        vh.press(pressed);
     }
 
     /**
@@ -855,7 +904,7 @@ public class GuidedActionsStylist implements FragmentAnimationProvider {
      * @param vh The view holder associated with the relevant action.
      */
     public void onAnimateItemPressedCancelled(ViewHolder vh) {
-        createAnimator(vh.itemView, R.attr.guidedActionUnpressedAnimation).end();
+        vh.press(false);
     }
 
     /**
@@ -1444,19 +1493,9 @@ public class GuidedActionsStylist implements FragmentAnimationProvider {
         return ctx.getResources().getDimensionPixelSize(typedValue.resourceId);
     }
 
-    private static Animator createAnimator(View v, int attrId) {
-        Context ctx = v.getContext();
-        TypedValue typedValue = new TypedValue();
-        ctx.getTheme().resolveAttribute(attrId, typedValue, true);
-        Animator animator = AnimatorInflater.loadAnimator(ctx, typedValue.resourceId);
-        animator.setTarget(v);
-        return animator;
-    }
-
     private boolean setIcon(final ImageView iconView, GuidedAction action) {
         Drawable icon = null;
         if (iconView != null) {
-            Context context = iconView.getContext();
             icon = action.getIcon();
             if (icon != null) {
                 // setImageDrawable resets the drawable's level unless we set the view level first.

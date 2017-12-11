@@ -1,6 +1,3 @@
-// CHECKSTYLE:OFF Generated code
-/* This file is auto-generated from RowsFragment.java.  DO NOT MODIFY. */
-
 /*
  * Copyright (C) 2014 The Android Open Source Project
  *
@@ -19,6 +16,8 @@ package android.support.v17.leanback.app;
 import android.animation.TimeAnimator;
 import android.animation.TimeAnimator.TimeListener;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v17.leanback.R;
 import android.support.v17.leanback.widget.BaseOnItemViewClickedListener;
 import android.support.v17.leanback.widget.BaseOnItemViewSelectedListener;
@@ -144,6 +143,7 @@ public class RowsSupportFragment extends BaseRowSupportFragment implements
     boolean mViewsCreated;
     private int mAlignedTop = ALIGN_TOP_NOT_SET;
     boolean mAfterEntranceTransition = true;
+    boolean mFreezeRows;
 
     BaseOnItemViewSelectedListener mOnItemViewSelectedListener;
     BaseOnItemViewClickedListener mOnItemViewClickedListener;
@@ -287,7 +287,7 @@ public class RowsSupportFragment extends BaseRowSupportFragment implements
     }
 
     @Override
-    public void onViewCreated(View view, Bundle savedInstanceState) {
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         if (DEBUG) Log.v(TAG, "onViewCreated");
         super.onViewCreated(view, savedInstanceState);
         // Align the top edge of child with id row_content.
@@ -370,6 +370,10 @@ public class RowsSupportFragment extends BaseRowSupportFragment implements
             RowPresenter rowPresenter = (RowPresenter) vh.getPresenter();
             RowPresenter.ViewHolder rowVh = rowPresenter.getRowViewHolder(vh.getViewHolder());
             rowPresenter.setEntranceTransitionState(rowVh, mAfterEntranceTransition);
+
+            // freeze the rows attached after RowsSupportFragment#freezeRows() is called
+            rowPresenter.freeze(rowVh, mFreezeRows);
+
             if (mExternalAdapterListener != null) {
                 mExternalAdapterListener.onAttachedToWindow(vh);
             }
@@ -453,6 +457,7 @@ public class RowsSupportFragment extends BaseRowSupportFragment implements
     }
 
     private void freezeRows(boolean freeze) {
+        mFreezeRows = freeze;
         VerticalGridView verticalView = getVerticalGridView();
         if (verticalView != null) {
             final int count = verticalView.getChildCount();
@@ -622,6 +627,11 @@ public class RowsSupportFragment extends BaseRowSupportFragment implements
 
     }
 
+    /**
+     * The adapter that RowsSupportFragment implements
+     * BrowseSupportFragment.MainFragmentRowsAdapter.
+     * @see #getMainFragmentRowsAdapter().
+     */
     public static class MainFragmentRowsAdapter
             extends BrowseSupportFragment.MainFragmentRowsAdapter<RowsSupportFragment> {
 

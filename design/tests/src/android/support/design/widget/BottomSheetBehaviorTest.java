@@ -43,8 +43,8 @@ import android.support.test.espresso.action.Press;
 import android.support.test.espresso.action.Swipe;
 import android.support.test.espresso.action.ViewActions;
 import android.support.test.espresso.assertion.ViewAssertions;
-import android.support.test.espresso.core.deps.guava.base.Preconditions;
 import android.support.test.espresso.matcher.ViewMatchers;
+import android.support.test.filters.LargeTest;
 import android.support.test.filters.MediumTest;
 import android.support.test.filters.SmallTest;
 import android.support.v4.view.ViewCompat;
@@ -57,6 +57,7 @@ import android.view.ViewGroup;
 
 import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class BottomSheetBehaviorTest extends
@@ -228,8 +229,8 @@ public class BottomSheetBehaviorTest extends
         }
 
         private static float[][] interpolate(float[] start, float[] end, int steps) {
-            Preconditions.checkElementIndex(1, start.length);
-            Preconditions.checkElementIndex(1, end.length);
+            Assert.assertTrue(1 < start.length);
+            Assert.assertTrue(1 < end.length);
             float[][] res = new float[steps][2];
             for(int i = 1; i < steps + 1; ++i) {
                 res[i - 1][0] = start[0] + (end[0] - start[0]) * (float)i / ((float)steps + 2.0F);
@@ -303,7 +304,7 @@ public class BottomSheetBehaviorTest extends
     }
 
     @Test
-    @MediumTest
+    @LargeTest
     public void testSwipeDownToCollapse() throws Throwable {
         checkSetState(BottomSheetBehavior.STATE_EXPANDED, ViewMatchers.isDisplayed());
         Espresso.onView(ViewMatchers.withId(R.id.bottom_sheet))
@@ -362,7 +363,7 @@ public class BottomSheetBehaviorTest extends
     }
 
     @Test
-    @MediumTest
+    @LargeTest
     public void testSkipCollapsed() throws Throwable {
         getBehavior().setSkipCollapsed(true);
         checkSetState(BottomSheetBehavior.STATE_EXPANDED, ViewMatchers.isDisplayed());
@@ -500,7 +501,7 @@ public class BottomSheetBehaviorTest extends
     }
 
     @Test
-    @MediumTest
+    @LargeTest
     public void testNestedScroll() throws Throwable {
         final ViewGroup bottomSheet = getBottomSheet();
         final BottomSheetBehavior behavior = getBehavior();
@@ -715,6 +716,24 @@ public class BottomSheetBehaviorTest extends
     }
 
     @Test
+    @MediumTest
+    public void testExpandedPeekHeight() throws Throwable {
+        mActivityTestRule.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                // Make the peek height as tall as the bottom sheet.
+                BottomSheetBehavior behavior = getBehavior();
+                behavior.setPeekHeight(getBottomSheet().getHeight());
+                assertThat(behavior.getState(), is(BottomSheetBehavior.STATE_COLLAPSED));
+            }
+        });
+        // Both of these will not animate the sheet , but the state should be changed.
+        checkSetState(BottomSheetBehavior.STATE_EXPANDED, ViewMatchers.isDisplayed());
+        checkSetState(BottomSheetBehavior.STATE_COLLAPSED, ViewMatchers.isDisplayed());
+    }
+
+    @Test
+    @SmallTest
     public void testFindScrollingChildEnabled() {
         Context context = mActivityTestRule.getActivity();
         NestedScrollView disabledParent = new NestedScrollView(context);

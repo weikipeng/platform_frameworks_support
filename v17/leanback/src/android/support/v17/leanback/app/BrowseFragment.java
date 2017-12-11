@@ -1,3 +1,6 @@
+// CHECKSTYLE:OFF Generated code
+/* This file is auto-generated from BrowseSupportFragment.java.  DO NOT MODIFY. */
+
 /*
  * Copyright (C) 2014 The Android Open Source Project
  *
@@ -15,10 +18,6 @@ package android.support.v17.leanback.app;
 
 import static android.support.v7.widget.RecyclerView.NO_POSITION;
 
-import android.app.Fragment;
-import android.app.FragmentManager;
-import android.app.FragmentManager.BackStackEntry;
-import android.app.FragmentTransaction;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Color;
@@ -45,6 +44,10 @@ import android.support.v17.leanback.widget.RowPresenter;
 import android.support.v17.leanback.widget.ScaleFrameLayout;
 import android.support.v17.leanback.widget.TitleViewAdapter;
 import android.support.v17.leanback.widget.VerticalGridView;
+import android.app.Fragment;
+import android.app.FragmentManager;
+import android.app.FragmentManager.BackStackEntry;
+import android.app.FragmentTransaction;
 import android.support.v4.view.ViewCompat;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -395,7 +398,7 @@ public class BrowseFragment extends BaseFragment {
         }
 
         /**
-         * Set the visibility of titles/hovercard of browse rows.
+         * Set the visibility of titles/hover card of browse rows.
          */
         public void setExpand(boolean expand) {
         }
@@ -552,7 +555,9 @@ public class BrowseFragment extends BaseFragment {
 
     private boolean createMainFragment(ObjectAdapter adapter, int position) {
         Object item = null;
-        if (adapter == null || adapter.size() == 0) {
+        if (!mCanShowHeaders) {
+            // when header is disabled, we can decide to use RowsFragment even no data.
+        } else if (adapter == null || adapter.size() == 0) {
             return false;
         } else {
             if (position < 0) {
@@ -565,7 +570,7 @@ public class BrowseFragment extends BaseFragment {
         }
 
         boolean oldIsPageRow = mIsPageRow;
-        mIsPageRow = item instanceof PageRow;
+        mIsPageRow = mCanShowHeaders && item instanceof PageRow;
         boolean swap;
 
         if (mMainFragment == null) {
@@ -631,7 +636,7 @@ public class BrowseFragment extends BaseFragment {
      * against {@link PageRow}.
      */
     public final static class MainFragmentAdapterRegistry {
-        private final Map<Class, FragmentFactory> mItemToFragmentFactoryMapping = new HashMap();
+        private final Map<Class, FragmentFactory> mItemToFragmentFactoryMapping = new HashMap<>();
         private final static FragmentFactory sDefaultFragmentFactory = new ListRowFragmentFactory();
 
         public MainFragmentAdapterRegistry() {
@@ -643,11 +648,8 @@ public class BrowseFragment extends BaseFragment {
         }
 
         public Fragment createFragment(Object item) {
-            if (item == null) {
-                throw new IllegalArgumentException("Item can't be null");
-            }
-
-            FragmentFactory fragmentFactory = mItemToFragmentFactoryMapping.get(item.getClass());
+            FragmentFactory fragmentFactory = item == null ? sDefaultFragmentFactory :
+                    mItemToFragmentFactoryMapping.get(item.getClass());
             if (fragmentFactory == null && !(item instanceof PageRow)) {
                 fragmentFactory = sDefaultFragmentFactory;
             }
@@ -1027,7 +1029,8 @@ public class BrowseFragment extends BaseFragment {
                         ? mHeadersFragment.getVerticalGridView() : mMainFragment.getView();
             }
 
-            boolean isRtl = ViewCompat.getLayoutDirection(focused) == View.LAYOUT_DIRECTION_RTL;
+            boolean isRtl = ViewCompat.getLayoutDirection(focused)
+                    == ViewCompat.LAYOUT_DIRECTION_RTL;
             int towardStart = isRtl ? View.FOCUS_RIGHT : View.FOCUS_LEFT;
             int towardEnd = isRtl ? View.FOCUS_LEFT : View.FOCUS_RIGHT;
             if (mCanShowHeaders && direction == towardStart) {
@@ -1110,7 +1113,7 @@ public class BrowseFragment extends BaseFragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        final Context context = FragmentUtil.getContext(this);
+        final Context context = FragmentUtil.getContext(BrowseFragment.this);
         TypedArray ta = context.obtainStyledAttributes(R.styleable.LeanbackTheme);
         mContainerListMarginStart = (int) ta.getDimension(
                 R.styleable.LeanbackTheme_browseRowsMarginStart, context.getResources()
@@ -1278,7 +1281,7 @@ public class BrowseFragment extends BaseFragment {
     }
 
     void createHeadersTransition() {
-        mHeadersTransition = TransitionHelper.loadTransition(FragmentUtil.getContext(this),
+        mHeadersTransition = TransitionHelper.loadTransition(FragmentUtil.getContext(BrowseFragment.this),
                 mShowingHeaders
                         ? R.transition.lb_browse_headers_in : R.transition.lb_browse_headers_out);
 
@@ -1710,7 +1713,7 @@ public class BrowseFragment extends BaseFragment {
 
     @Override
     protected Object createEntranceTransition() {
-        return TransitionHelper.loadTransition(FragmentUtil.getContext(this),
+        return TransitionHelper.loadTransition(FragmentUtil.getContext(BrowseFragment.this),
                 R.transition.lb_browse_entrance_transition);
     }
 

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package android.support.v7.app;
 
 import static android.support.test.espresso.Espresso.onView;
@@ -47,8 +48,9 @@ import android.support.test.espresso.action.Swipe;
 import android.support.test.filters.FlakyTest;
 import android.support.test.filters.LargeTest;
 import android.support.test.filters.MediumTest;
-import android.support.test.filters.SmallTest;
 import android.support.test.filters.Suppress;
+import android.support.test.rule.ActivityTestRule;
+import android.support.test.runner.AndroidJUnit4;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.appcompat.test.R;
@@ -56,20 +58,23 @@ import android.support.v7.custom.CustomDrawerLayout;
 import android.view.View;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
-public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutActivity> {
+@RunWith(AndroidJUnit4.class)
+public class DrawerLayoutTest {
+    @Rule
+    public final ActivityTestRule<DrawerLayoutActivity> mActivityTestRule =
+            new ActivityTestRule<DrawerLayoutActivity>(DrawerLayoutActivity.class);
+
     private CustomDrawerLayout mDrawerLayout;
 
     private View mStartDrawer;
 
     private View mContentView;
-
-    public DrawerLayoutTest() {
-        super(DrawerLayoutActivity.class);
-    }
 
     @Before
     public void setUp() {
@@ -85,7 +90,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     // Tests for opening and closing the drawer and checking the open state
 
     @Test
-    @MediumTest
+    @LargeTest
     public void testDrawerOpenCloseViaAPI() {
         assertFalse("Initial state", mDrawerLayout.isDrawerOpen(GravityCompat.START));
 
@@ -113,7 +118,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     }
 
     @Test
-    @MediumTest
+    @LargeTest
     public void testDrawerOpenCloseFocus() throws Throwable {
         assertFalse("Initial state", mDrawerLayout.isDrawerOpen(GravityCompat.START));
 
@@ -138,7 +143,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     }
 
     @Test
-    @MediumTest
+    @LargeTest
     public void testDrawerOpenCloseWithRedundancyViaAPI() {
         assertFalse("Initial state", mDrawerLayout.isDrawerOpen(GravityCompat.START));
 
@@ -186,7 +191,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     }
 
     @Test
-    @MediumTest
+    @LargeTest
     public void testDrawerOpenCloseViaSwipes() {
         assertFalse("Initial state", mDrawerLayout.isDrawerOpen(GravityCompat.START));
 
@@ -248,7 +253,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testDrawerHeight() {
         // Open the drawer so it becomes visible
         onView(withId(R.id.drawer_layout)).perform(openDrawer(GravityCompat.START));
@@ -291,7 +296,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     // Tests for listener(s) being notified of various events
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testDrawerListenerCallbacksOnOpeningViaAPI() {
         // Register a mock listener
         DrawerLayout.DrawerListener mockedListener = mock(DrawerLayout.DrawerListener.class);
@@ -328,7 +333,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testDrawerListenerCallbacksOnOpeningNoAnimationViaAPI() {
         // Register a mock listener
         DrawerLayout.DrawerListener mockedListener = mock(DrawerLayout.DrawerListener.class);
@@ -357,7 +362,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     }
 
     @Test
-    @SmallTest
+    @LargeTest
     public void testDrawerListenerCallbacksOnClosingViaAPI() {
         // Open the drawer so it becomes visible
         onView(withId(R.id.drawer_layout)).perform(openDrawer(GravityCompat.START));
@@ -397,7 +402,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     }
 
     @Test
-    @SmallTest
+    @MediumTest
     public void testDrawerListenerCallbacksOnClosingNoAnimationViaAPI() {
         // Open the drawer so it becomes visible
         onView(withId(R.id.drawer_layout)).perform(openDrawer(GravityCompat.START, false));
@@ -431,7 +436,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     @Suppress
     @FlakyTest(bugId = 33659300)
     @Test
-    @SmallTest
+    @MediumTest
     public void testDrawerListenerCallbacksOnOpeningViaSwipes() {
         // Register a mock listener
         DrawerLayout.DrawerListener mockedListener = mock(DrawerLayout.DrawerListener.class);
@@ -476,7 +481,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     }
 
     @Test
-    @SmallTest
+    @LargeTest
     public void testDrawerListenerCallbacksOnClosingViaSwipes() {
         // Open the drawer so it becomes visible
         onView(withId(R.id.drawer_layout)).perform(openDrawer(GravityCompat.START));
@@ -524,7 +529,7 @@ public class DrawerLayoutTest extends BaseInstrumentationTestCase<DrawerLayoutAc
     }
 
     @Test
-    @SmallTest
+    @LargeTest
     public void testDrawerLockUnlock() {
         assertEquals("Drawer is unlocked in initial state",
                 DrawerLayout.LOCK_MODE_UNLOCKED, mDrawerLayout.getDrawerLockMode(mStartDrawer));

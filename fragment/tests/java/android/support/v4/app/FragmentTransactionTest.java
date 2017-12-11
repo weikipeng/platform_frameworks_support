@@ -15,10 +15,10 @@
  */
 package android.support.v4.app;
 
+import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertTrue;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -31,6 +31,7 @@ import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.support.fragment.test.R;
 import android.support.test.InstrumentationRegistry;
+import android.support.test.annotation.UiThreadTest;
 import android.support.test.filters.MediumTest;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.runner.AndroidJUnit4;
@@ -251,34 +252,57 @@ public class FragmentTransactionTest {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
     }
 
+    @Test
+    public void testPostOnCommit() throws Throwable {
+        mActivityRule.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                final boolean[] ran = new boolean[1];
+                FragmentManager fm = mActivityRule.getActivity().getSupportFragmentManager();
+                fm.beginTransaction().runOnCommit(new Runnable() {
+                    @Override
+                    public void run() {
+                        ran[0] = true;
+                    }
+                }).commit();
+                fm.executePendingTransactions();
+
+                assertTrue("runOnCommit runnable never ran", ran[0]);
+
+                ran[0] = false;
+
+                boolean threw = false;
+                try {
+                    fm.beginTransaction().runOnCommit(new Runnable() {
+                        @Override
+                        public void run() {
+                            ran[0] = true;
+                        }
+                    }).addToBackStack(null).commit();
+                } catch (IllegalStateException ise) {
+                    threw = true;
+                }
+
+                fm.executePendingTransactions();
+
+                assertTrue("runOnCommit was allowed to be called for back stack transaction",
+                        threw);
+                assertFalse("runOnCommit runnable for back stack transaction was run", ran[0]);
+            }
+        });
+    }
+
     /**
-     * onNewIntent() should note that the state is not saved so that child fragment
-     * managers can execute transactions.
+     * Test to ensure that when onBackPressed() is received that there is no crash.
      */
     @Test
-    public void newIntentUnlocks() throws Throwable {
+    @UiThreadTest
+    public void crashOnBackPressed() throws Throwable {
         Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
-        Intent intent1 = new Intent(mActivity, NewIntentActivity.class)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        NewIntentActivity newIntentActivity =
-                (NewIntentActivity) instrumentation.startActivitySync(intent1);
-        FragmentTestUtil.waitForExecution(mActivityRule);
-
-        Intent intent2 = new Intent(mActivity, FragmentTestActivity.class);
-        intent2.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        Activity coveringActivity = instrumentation.startActivitySync(intent2);
-        FragmentTestUtil.waitForExecution(mActivityRule);
-
-        Intent intent3 = new Intent(mActivity, NewIntentActivity.class)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        mActivity.startActivity(intent3);
-        assertTrue(newIntentActivity.newIntent.await(1, TimeUnit.SECONDS));
-        FragmentTestUtil.waitForExecution(mActivityRule);
-
-        for (Fragment fragment : newIntentActivity.getSupportFragmentManager().getFragments()) {
-            // There really should only be one fragment in newIntentActivity.
-            assertEquals(1, fragment.getChildFragmentManager().getFragments().size());
-        }
+        Bundle outState = new Bundle();
+        FragmentTestActivity activity = mActivityRule.getActivity();
+        instrumentation.callActivityOnSaveInstanceState(activity, outState);
+        activity.onBackPressed();
     }
 
     // Ensure that getFragments() works during transactions, even if it is run off thread
@@ -391,6 +415,36 @@ public class FragmentTransactionTest {
                 assertEquals(0, fm.getFragments().size());
             }
         });
+    }
+
+    /**
+     * onNewIntent() should note that the state is not saved so that child fragment
+     * managers can execute transactions.
+     */
+    @Test
+    public void newIntentUnlocks() throws Throwable {
+        Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
+        Intent intent1 = new Intent(mActivity, NewIntentActivity.class)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        NewIntentActivity newIntentActivity =
+                (NewIntentActivity) instrumentation.startActivitySync(intent1);
+        FragmentTestUtil.waitForExecution(mActivityRule);
+
+        Intent intent2 = new Intent(mActivity, FragmentTestActivity.class);
+        intent2.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Activity coveringActivity = instrumentation.startActivitySync(intent2);
+        FragmentTestUtil.waitForExecution(mActivityRule);
+
+        Intent intent3 = new Intent(mActivity, NewIntentActivity.class)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        mActivity.startActivity(intent3);
+        assertTrue(newIntentActivity.newIntent.await(1, TimeUnit.SECONDS));
+        FragmentTestUtil.waitForExecution(mActivityRule);
+
+        for (Fragment fragment : newIntentActivity.getSupportFragmentManager().getFragments()) {
+            // There really should only be one fragment in newIntentActivity.
+            assertEquals(1, fragment.getChildFragmentManager().getFragments().size());
+        }
     }
 
     private void getFragmentsUntilSize(int expectedSize) {

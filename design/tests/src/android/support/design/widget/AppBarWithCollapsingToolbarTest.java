@@ -21,21 +21,16 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-import android.os.Build;
-import android.os.SystemClock;
 import android.support.design.test.R;
-import android.support.test.filters.FlakyTest;
 import android.support.test.filters.LargeTest;
-import android.support.test.filters.SdkSuppress;
-import android.support.test.filters.Suppress;
+import android.support.testutils.PollingCheck;
 import android.widget.ImageView;
 
 import org.junit.Test;
 
 @LargeTest
 public class AppBarWithCollapsingToolbarTest extends AppBarLayoutBaseTest {
-    @Suppress
-    @FlakyTest(bugId = 30701044)
+
     @Test
     public void testPinnedToolbar() throws Throwable {
         configureContent(R.layout.design_appbar_toolbar_collapse_pin,
@@ -141,8 +136,6 @@ public class AppBarWithCollapsingToolbarTest extends AppBarLayoutBaseTest {
         assertScrimAlpha(0);
     }
 
-    @Suppress
-    @FlakyTest(bugId = 30701044)
     @Test
     public void testScrollingToolbar() throws Throwable {
         configureContent(R.layout.design_appbar_toolbar_collapse_scroll,
@@ -253,8 +246,6 @@ public class AppBarWithCollapsingToolbarTest extends AppBarLayoutBaseTest {
         assertScrimAlpha(0);
     }
 
-    @Suppress
-    @FlakyTest(bugId = 30701044)
     @Test
     public void testScrollingToolbarEnterAlways() throws Throwable {
         configureContent(R.layout.design_appbar_toolbar_collapse_scroll_enteralways,
@@ -360,8 +351,6 @@ public class AppBarWithCollapsingToolbarTest extends AppBarLayoutBaseTest {
         assertScrimAlpha(0);
     }
 
-    @Suppress
-    @FlakyTest(bugId = 30701044)
     @Test
     public void testPinnedToolbarAndAnchoredFab() throws Throwable {
         configureContent(R.layout.design_appbar_toolbar_collapse_pin_with_fab,
@@ -398,16 +387,19 @@ public class AppBarWithCollapsingToolbarTest extends AppBarLayoutBaseTest {
         // this test needs to be tied to the internal implementation details of running animation
         // that scales the FAB to 0/0 scales and interpolates its alpha to 0. Since that animation
         // starts running partway through our swipe gesture and may complete a bit later then
-        // the swipe gesture, sleep for a bit to catch the "final" state of the FAB.
-        SystemClock.sleep(200);
+        // the swipe gesture, poll to catch the "final" state of the FAB.
+        PollingCheck.waitFor(new PollingCheck.PollingCheckCondition() {
+            @Override
+            public boolean canProceed() {
+                return fab.getScaleX() == 0.0f;
+            }
+        });
 
         // At this point the FAB should be scaled to 0/0 and set at alpha 0. Since the relevant
         // getter methods are only available on v11+, wrap the asserts with build version check.
-        if (Build.VERSION.SDK_INT >= 11) {
-            assertEquals(0.0f, fab.getScaleX(), 0.0f);
-            assertEquals(0.0f, fab.getScaleY(), 0.0f);
-            assertEquals(0.0f, fab.getAlpha(), 0.0f);
-        }
+        assertEquals(0.0f, fab.getScaleX(), 0.0f);
+        assertEquals(0.0f, fab.getScaleY(), 0.0f);
+        assertEquals(0.0f, fab.getAlpha(), 0.0f);
 
         // Perform a swipe-down gesture across the horizontal center of the screen.
         performVerticalSwipeDownGesture(
@@ -416,20 +408,20 @@ public class AppBarWithCollapsingToolbarTest extends AppBarLayoutBaseTest {
                 originalAppbarBottom,
                 longSwipeAmount);
 
-        // Same as for swipe-up gesture - sleep for a bit to catch the "final" visible state of
-        // the FAB.
-        SystemClock.sleep(200);
+        // Same as for swipe-up gesture.
+        PollingCheck.waitFor(new PollingCheck.PollingCheckCondition() {
+            @Override
+            public boolean canProceed() {
+                return fab.getScaleX() == 1.0f;
+            }
+        });
 
         // At this point the FAB should be scaled back to its original size and be at full opacity.
-        if (Build.VERSION.SDK_INT >= 11) {
-            assertEquals(1.0f, fab.getScaleX(), 0.0f);
-            assertEquals(1.0f, fab.getScaleY(), 0.0f);
-            assertEquals(1.0f, fab.getAlpha(), 0.0f);
-        }
+        assertEquals(1.0f, fab.getScaleX(), 0.0f);
+        assertEquals(1.0f, fab.getScaleY(), 0.0f);
+        assertEquals(1.0f, fab.getAlpha(), 0.0f);
     }
 
-    @Suppress
-    @FlakyTest(bugId = 30701044)
     @Test
     public void testPinnedToolbarAndParallaxImage() throws Throwable {
         configureContent(R.layout.design_appbar_toolbar_collapse_with_image,
@@ -528,15 +520,7 @@ public class AppBarWithCollapsingToolbarTest extends AppBarLayoutBaseTest {
 
     }
 
-    /**
-     * This test only runs on API 11+ since FrameLayout (which CollapsingToolbarLayout
-     * inherits from) has an issue with measuring children with margins when run on earlier
-     * versions of the platform.
-     */
-    @Suppress
-    @FlakyTest(bugId = 30701044)
     @Test
-    @SdkSuppress(minSdkVersion = 11)
     public void testPinnedToolbarWithMargins() throws Throwable {
         configureContent(R.layout.design_appbar_toolbar_collapse_pin_margins,
                 R.string.design_appbar_collapsing_toolbar_pin_margins);
@@ -589,5 +573,18 @@ public class AppBarWithCollapsingToolbarTest extends AppBarLayoutBaseTest {
         // The toolbar should still be visually pinned to the bottom of the appbar layout
         assertEquals(appbarOnScreenXY[1] + appbarHeight,
                 toolbarOnScreenXY[1] + toolbarHeight + toolbarLp.bottomMargin, 1);
+    }
+
+    @Test
+    public void testSingleToolbarWithInset() throws Throwable {
+        configureContent(R.layout.design_appbar_toolbar_collapse_sole_toolbar,
+                R.string.design_appbar_collapsing_toolbar_pin_margins);
+
+        final int[] appbarOnScreenXY = new int[2];
+        final int[] toolbarOnScreenXY = new int[2];
+        mAppBar.getLocationOnScreen(appbarOnScreenXY);
+        mToolbar.getLocationOnScreen(toolbarOnScreenXY);
+
+        assertEquals(appbarOnScreenXY[1] + mAppBar.getTopInset(), toolbarOnScreenXY[1], 1);
     }
 }

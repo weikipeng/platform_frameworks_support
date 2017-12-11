@@ -15,7 +15,7 @@
  */
 package android.support.v17.leanback.graphics;
 
-import android.annotation.TargetApi;
+import android.support.annotation.RequiresApi;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
@@ -176,6 +176,7 @@ public class FitWidthBitmapDrawable extends Drawable {
     /**
      * @return Alpha value between 0(inclusive) and 255(inclusive)
      */
+    @Override
     public int getAlpha() {
         return mBitmapState.mPaint.getAlpha();
     }
@@ -214,10 +215,12 @@ public class FitWidthBitmapDrawable extends Drawable {
             // use Property
             PROPERTY_VERTICAL_OFFSET = new Property<FitWidthBitmapDrawable, Integer>(Integer.class,
                     "verticalOffset") {
+                @Override
                 public void set(FitWidthBitmapDrawable object, Integer value) {
                     object.setVerticalOffset(value);
                 }
 
+                @Override
                 public Integer get(FitWidthBitmapDrawable object) {
                     return object.getVerticalOffset();
                 }
@@ -225,9 +228,10 @@ public class FitWidthBitmapDrawable extends Drawable {
         }
     }
 
-    @TargetApi(24)
+    @RequiresApi(24)
     static IntProperty<FitWidthBitmapDrawable> getVerticalOffsetIntProperty() {
         return new IntProperty<FitWidthBitmapDrawable>("verticalOffset") {
+            @Override
             public void setValue(FitWidthBitmapDrawable fitWidthBitmapDrawable, int value) {
                 fitWidthBitmapDrawable.setVerticalOffset(value);
             }

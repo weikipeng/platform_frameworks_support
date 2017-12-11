@@ -34,6 +34,10 @@ public class GridActivity extends Activity {
 
     private static final String TAG = "GridActivity";
 
+    interface ImportantForAccessibilityListener {
+        void onImportantForAccessibilityChanged(View view, int newValue);
+    }
+
     interface AdapterListener {
         void onBind(RecyclerView.ViewHolder vh, int position);
     }
@@ -48,6 +52,7 @@ public class GridActivity extends Activity {
     public static final String EXTRA_CHILD_LAYOUT_ID = "childLayoutId";
     public static final String EXTRA_SECONDARY_SIZE_ZERO = "secondarySizeZero";
     public static final String EXTRA_UPDATE_SIZE = "updateSize";
+    public static final String EXTRA_UPDATE_SIZE_SECONDARY = "updateSizeSecondary";
     public static final String EXTRA_LAYOUT_MARGINS = "layoutMargins";
     public static final String EXTRA_NINEPATCH_SHADOW = "NINEPATCH_SHADOW";
     public static final String EXTRA_HAS_STABLE_IDS = "hasStableIds";
@@ -90,6 +95,7 @@ public class GridActivity extends Activity {
     GridWidgetTest.ItemAlignmentFacetProvider mAlignmentViewTypeProvider;
     AdapterListener mAdapterListener;
     boolean mUpdateSize = true;
+    boolean mUpdateSizeSecondary = false;
     boolean mHasStableIds;
 
     int[] mGridViewLayoutSize;
@@ -100,6 +106,7 @@ public class GridActivity extends Activity {
     int mNinePatchShadow;
 
     private int mBoundCount;
+    ImportantForAccessibilityListener mImportantForAccessibilityListener;
 
     private View createView() {
 
@@ -133,6 +140,7 @@ public class GridActivity extends Activity {
         mRequestFocusOnLayout = intent.getBooleanExtra(EXTRA_REQUEST_FOCUS_ONLAYOUT,
                 DEFAULT_REQUEST_FOCUS_ONLAYOUT);
         mUpdateSize = intent.getBooleanExtra(EXTRA_UPDATE_SIZE, true);
+        mUpdateSizeSecondary = intent.getBooleanExtra(EXTRA_UPDATE_SIZE_SECONDARY, false);
         mSecondarySizeZero = intent.getBooleanExtra(EXTRA_SECONDARY_SIZE_ZERO, false);
         mItemLengths = intent.getIntArrayExtra(EXTRA_ITEMS);
         mHasStableIds = intent.getBooleanExtra(EXTRA_HAS_STABLE_IDS, false);
@@ -258,6 +266,17 @@ public class GridActivity extends Activity {
         mGridView.getAdapter().notifyItemMoved(index2 - 1, index1);
     }
 
+    void moveItem(int index1, int index2, boolean notify) {
+        if (index1 == index2) {
+            return;
+        }
+        int[] items = removeItems(index1, 1, false);
+        addItems(index2, items, false);
+        if (notify) {
+            mGridView.getAdapter().notifyItemMoved(index1, index2);
+        }
+    }
+
     void changeArraySize(int length) {
         mNumItems = length;
         mGridView.getAdapter().notifyDataSetChanged();
@@ -294,6 +313,10 @@ public class GridActivity extends Activity {
     }
 
     void addItems(int index, int[] items) {
+        addItems(index, items, true);
+    }
+
+    void addItems(int index, int[] items, boolean notify) {
         int length = items.length;
         if (mItemLengths.length < mNumItems + length) {
             int[] array = new int[mNumItems + length];
@@ -303,7 +326,7 @@ public class GridActivity extends Activity {
         System.arraycopy(mItemLengths, index, mItemLengths, index + length, mNumItems - index);
         System.arraycopy(items, 0, mItemLengths, index, length);
         mNumItems += length;
-        if (mGridView.getAdapter() != null) {
+        if (notify && mGridView.getAdapter() != null) {
             mGridView.getAdapter().notifyItemRangeInserted(index, length);
         }
     }
@@ -380,6 +403,15 @@ public class GridActivity extends Activity {
                             }
                         }
                     }
+
+                    @Override
+                    public void setImportantForAccessibility(int mode) {
+                        super.setImportantForAccessibility(mode);
+                        if (mImportantForAccessibilityListener != null) {
+                            mImportantForAccessibilityListener.onImportantForAccessibilityChanged(
+                                    this, mode);
+                        }
+                    }
                 };
                 textView.setTextColor(Color.BLACK);
                 textView.setOnFocusChangeListener(mItemFocusChangeListener);
@@ -453,7 +485,7 @@ public class GridActivity extends Activity {
     }
 
     void updateSize(View view, int position) {
-        if (!mUpdateSize) {
+        if (!mUpdateSize && !mUpdateSizeSecondary) {
             return;
         }
         ViewGroup.LayoutParams p = view.getLayoutParams();
@@ -461,10 +493,14 @@ public class GridActivity extends Activity {
             p = new ViewGroup.LayoutParams(0, 0);
         }
         if (mOrientation == BaseGridView.HORIZONTAL) {
-            p.width = mItemLengths[position] + (mRequestLayoutOnFocus && view.hasFocus() ? 1 : 0);
-            p.height = mSecondarySizeZero ? 0 : 80;
+            p.width = mItemLengths[position]
+                    + (mUpdateSize && mRequestLayoutOnFocus && view.hasFocus() ? 1 : 0);
+            p.height = mSecondarySizeZero ? 0
+                    : (mUpdateSizeSecondary && mRequestLayoutOnFocus && view.hasFocus() ? 96 : 80);
         } else {
-            p.width = mSecondarySizeZero ? 0 : 240;
+            p.width = mSecondarySizeZero ? 0
+                    : (mUpdateSizeSecondary && mRequestLayoutOnFocus && view.hasFocus()
+                            ? 260 : 240);
             p.height = mItemLengths[position] + (mRequestLayoutOnFocus && view.hasFocus() ? 1 : 0);
         }
         view.setLayoutParams(p);

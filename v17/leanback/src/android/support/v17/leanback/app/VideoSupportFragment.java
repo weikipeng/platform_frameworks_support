@@ -1,6 +1,3 @@
-// CHECKSTYLE:OFF Generated code
-/* This file is auto-generated from VideoFragment.java.  DO NOT MODIFY. */
-
 /*
  * Copyright (C) 2016 The Android Open Source Project
  *
@@ -84,6 +81,24 @@ public class VideoSupportFragment extends PlaybackSupportFragment {
                 mMediaPlaybackCallback.surfaceCreated(mVideoSurface.getHolder());
             }
         }
+    }
+
+    @Override
+    protected void onVideoSizeChanged(int width, int height) {
+        int screenWidth = getView().getWidth();
+        int screenHeight = getView().getHeight();
+
+        ViewGroup.LayoutParams p = mVideoSurface.getLayoutParams();
+        if (screenWidth * height > width * screenHeight) {
+            // fit in screen height
+            p.height = screenHeight;
+            p.width = screenHeight * width / height;
+        } else {
+            // fit in screen width
+            p.width = screenWidth;
+            p.height = screenWidth * height / width;
+        }
+        mVideoSurface.setLayoutParams(p);
     }
 
     /**

@@ -21,6 +21,7 @@ import static android.support.design.testutils.TestUtilsActions.setEnabled;
 import static android.support.design.testutils.TestUtilsMatchers.withCompoundDrawable;
 import static android.support.design.testutils.TestUtilsMatchers.withTextColor;
 import static android.support.design.testutils.TestUtilsMatchers.withTypeface;
+import static android.support.design.testutils.TextInputLayoutActions.clickPasswordToggle;
 import static android.support.design.testutils.TextInputLayoutActions.setCounterEnabled;
 import static android.support.design.testutils.TextInputLayoutActions.setCounterMaxLength;
 import static android.support.design.testutils.TextInputLayoutActions.setError;
@@ -29,8 +30,10 @@ import static android.support.design.testutils.TextInputLayoutActions.setErrorTe
 import static android.support.design.testutils.TextInputLayoutActions
         .setPasswordVisibilityToggleEnabled;
 import static android.support.design.testutils.TextInputLayoutActions.setTypeface;
+import static android.support.design.testutils.TextInputLayoutMatchers.doesNotShowPasswordToggle;
 import static android.support.design.testutils.TextInputLayoutMatchers
-        .hasPasswordToggleContentDescription;
+        .passwordToggleHasContentDescription;
+import static android.support.design.testutils.TextInputLayoutMatchers.passwordToggleIsNotChecked;
 import static android.support.test.InstrumentationRegistry.getInstrumentation;
 import static android.support.test.espresso.Espresso.onView;
 import static android.support.test.espresso.action.ViewActions.click;
@@ -38,17 +41,18 @@ import static android.support.test.espresso.action.ViewActions.typeText;
 import static android.support.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static android.support.test.espresso.assertion.ViewAssertions.matches;
 import static android.support.test.espresso.contrib.AccessibilityChecks.accessibilityAssertion;
-import static android.support.test.espresso.matcher.ViewMatchers.hasContentDescription;
 import static android.support.test.espresso.matcher.ViewMatchers.hasFocus;
-import static android.support.test.espresso.matcher.ViewMatchers.isChecked;
+import static android.support.test.espresso.matcher.ViewMatchers.isDescendantOfA;
 import static android.support.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static android.support.test.espresso.matcher.ViewMatchers.isEnabled;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
 import static android.support.test.espresso.matcher.ViewMatchers.withText;
 
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.core.AllOf.allOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -58,14 +62,22 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Parcelable;
 import android.support.design.test.R;
+import android.support.design.testutils.ActivityUtils;
+import android.support.design.testutils.RecreatedAppCompatActivity;
 import android.support.design.testutils.TestUtils;
+import android.support.design.testutils.ViewStructureImpl;
 import android.support.test.annotation.UiThreadTest;
 import android.support.test.espresso.NoMatchingViewException;
 import android.support.test.espresso.ViewAssertion;
+import android.support.test.filters.LargeTest;
 import android.support.test.filters.MediumTest;
+import android.support.test.filters.SdkSuppress;
 import android.support.v4.widget.TextViewCompat;
+import android.text.method.PasswordTransformationMethod;
+import android.text.method.TransformationMethod;
 import android.util.AttributeSet;
 import android.util.SparseArray;
 import android.view.KeyEvent;
@@ -163,7 +175,7 @@ public class TextInputLayoutTest extends BaseInstrumentationTestCase<TextInputLa
         assertNotEquals(INPUT_TEXT, textInput.getLayout().getText().toString());
 
         // Now click the toggle button
-        onView(withId(R.id.text_input_password_toggle)).perform(click());
+        onView(withId(R.id.textinput_password)).perform(clickPasswordToggle());
 
         // And assert that the password is not disguised
         assertEquals(INPUT_TEXT, textInput.getLayout().getText().toString());
@@ -185,7 +197,7 @@ public class TextInputLayoutTest extends BaseInstrumentationTestCase<TextInputLa
                 .perform(setPasswordVisibilityToggleEnabled(false));
 
         // Check that the password toggle view is not visible
-        onView(withId(R.id.text_input_password_toggle)).check(matches(not(isDisplayed())));
+        onView(withId(R.id.textinput_password)).check(matches(doesNotShowPasswordToggle()));
         // ...and that the password is disguised still
         assertNotEquals(INPUT_TEXT, textInput.getLayout().getText().toString());
     }
@@ -201,7 +213,7 @@ public class TextInputLayoutTest extends BaseInstrumentationTestCase<TextInputLa
         assertNotEquals(INPUT_TEXT, textInput.getLayout().getText().toString());
 
         // Now click the toggle button
-        onView(withId(R.id.text_input_password_toggle)).perform(click());
+        onView(withId(R.id.textinput_password)).perform(clickPasswordToggle());
         // Disable the password toggle
         onView(withId(R.id.textinput_password))
                 .perform(setPasswordVisibilityToggleEnabled(false));
@@ -248,7 +260,7 @@ public class TextInputLayoutTest extends BaseInstrumentationTestCase<TextInputLa
 
         // Type some text on the EditText and then click the toggle button
         onView(withId(R.id.textinput_edittext_pwd)).perform(typeText(INPUT_TEXT));
-        onView(withId(R.id.text_input_password_toggle)).perform(click());
+        onView(withId(R.id.textinput_password)).perform(clickPasswordToggle());
 
         // Disable the password toggle, and then re-enable it
         onView(withId(R.id.textinput_password))
@@ -257,7 +269,7 @@ public class TextInputLayoutTest extends BaseInstrumentationTestCase<TextInputLa
 
         // Check that the password is disguised and the toggle button reflects the same state
         assertNotEquals(INPUT_TEXT, textInput.getLayout().getText().toString());
-        onView(withId(R.id.text_input_password_toggle)).check(matches(not(isChecked())));
+        onView(withId(R.id.textinput_password)).check(matches(passwordToggleIsNotChecked()));
     }
 
     @Test
@@ -302,6 +314,30 @@ public class TextInputLayoutTest extends BaseInstrumentationTestCase<TextInputLa
         editText.onCreateInputConnection(info);
 
         assertEquals(INPUT_TEXT, info.hintText);
+    }
+
+    @UiThreadTest
+    @Test
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.O)
+    public void testDispatchProvideAutofillStructure() {
+        final Activity activity = mActivityTestRule.getActivity();
+
+        final TextInputLayout layout = activity.findViewById(R.id.textinput);
+
+        final ViewStructureImpl structure = new ViewStructureImpl();
+        layout.dispatchProvideAutofillStructure(structure, 0);
+
+        assertEquals(2, structure.getChildCount()); // EditText and TextView
+
+        // Asserts the structure.
+        final ViewStructureImpl childStructure = structure.getChildAt(0);
+        assertEquals(EditText.class.getName(), childStructure.getClassName());
+        assertEquals("Hint to the user", childStructure.getHint());
+
+        // Make sure the widget's hint was restored.
+        assertEquals("Hint to the user", layout.getHint());
+        final EditText editText = activity.findViewById(R.id.textinput_edittext);
+        assertNull(editText.getHint());
     }
 
     /**
@@ -402,13 +438,10 @@ public class TextInputLayoutTest extends BaseInstrumentationTestCase<TextInputLa
 
     @Test
     public void testPasswordToggleHasDefaultContentDescription() {
-        // Check that the TextInputLayout says that it has a content description
+        // Check that the TextInputLayout says that it has a content description and that the
+        // underlying toggle has content description as well
         onView(withId(R.id.textinput_password))
-                .check(matches(hasPasswordToggleContentDescription()));
-
-        // Check that the underlying toggle view says that it also has a content description
-        onView(withId(R.id.text_input_password_toggle))
-                .check(matches(hasContentDescription()));
+                .check(matches(passwordToggleHasContentDescription()));
     }
 
     /**
@@ -417,8 +450,8 @@ public class TextInputLayoutTest extends BaseInstrumentationTestCase<TextInputLa
      */
     @Test
     public void testPasswordToggleIsAccessible() {
-        onView(withId(R.id.text_input_password_toggle))
-                .check(accessibilityAssertion());
+        onView(allOf(withId(R.id.text_input_password_toggle),
+                isDescendantOfA(withId(R.id.textinput_password)))).check(accessibilityAssertion());
     }
 
     @Test
@@ -461,8 +494,7 @@ public class TextInputLayoutTest extends BaseInstrumentationTestCase<TextInputLa
 
     @Test
     public void testTextSetViaAttributeCollapsedHint() {
-        onView(withId(R.id.textinput_with_text))
-                .check(isHintExpanded(false));
+        onView(withId(R.id.textinput_with_text)).check(isHintExpanded(false));
     }
 
     @Test
@@ -480,12 +512,47 @@ public class TextInputLayoutTest extends BaseInstrumentationTestCase<TextInputLa
                 .check(matches(hasFocus()));
     }
 
+    @Test
+    @LargeTest
+    public void testSaveAndRestorePasswordVisibility() throws Throwable {
+        // Type some text on the EditText
+        onView(withId(R.id.textinput_edittext_pwd)).perform(typeText(INPUT_TEXT));
+        onView(withId(R.id.textinput_password)).check(isPasswordToggledVisible(false));
+
+        // Toggle password to be shown as plain text
+        onView(withId(R.id.textinput_password)).perform(clickPasswordToggle());
+        onView(withId(R.id.textinput_password)).check(isPasswordToggledVisible(true));
+
+        RecreatedAppCompatActivity activity = mActivityTestRule.getActivity();
+        activity = ActivityUtils.recreateActivity(mActivityTestRule, activity);
+        ActivityUtils.waitForExecution(mActivityTestRule);
+
+        // Check that the password is still toggled to be shown as plain text
+        onView(withId(R.id.textinput_password)).check(isPasswordToggledVisible(true));
+    }
+
     static ViewAssertion isHintExpanded(final boolean expanded) {
         return new ViewAssertion() {
             @Override
             public void check(View view, NoMatchingViewException noViewFoundException) {
                 assertTrue(view instanceof TextInputLayout);
                 assertEquals(expanded, ((TextInputLayout) view).isHintExpanded());
+            }
+        };
+    }
+
+    static ViewAssertion isPasswordToggledVisible(final boolean isToggledVisible) {
+        return new ViewAssertion() {
+            @Override
+            public void check(View view, NoMatchingViewException noViewFoundException) {
+                assertTrue(view instanceof TextInputLayout);
+                EditText editText = ((TextInputLayout) view).getEditText();
+                TransformationMethod transformationMethod = editText.getTransformationMethod();
+                if (isToggledVisible) {
+                    assertNull(transformationMethod);
+                } else {
+                    assertEquals(PasswordTransformationMethod.getInstance(), transformationMethod);
+                }
             }
         };
     }

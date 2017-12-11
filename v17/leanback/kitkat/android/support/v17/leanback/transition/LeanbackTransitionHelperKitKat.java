@@ -13,7 +13,6 @@
  */
 package android.support.v17.leanback.transition;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.support.annotation.RequiresApi;
 import android.support.v17.leanback.R;
@@ -21,7 +20,6 @@ import android.view.Gravity;
 import android.view.animation.AnimationUtils;
 
 @RequiresApi(19)
-@TargetApi(19)
 class LeanbackTransitionHelperKitKat {
 
     static public Object loadTitleInTransition(Context context) {
@@ -37,7 +35,7 @@ class LeanbackTransitionHelperKitKat {
         SlideKitkat slide = new SlideKitkat();
         slide.setSlideEdge(Gravity.TOP);
         slide.setInterpolator(AnimationUtils.loadInterpolator(context,
-                R.animator.lb_decelerator_4));
+                R.anim.lb_decelerator_4));
         slide.addTarget(R.id.browse_title_group);
         return slide;
     }

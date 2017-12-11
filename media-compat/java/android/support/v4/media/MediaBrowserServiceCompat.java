@@ -64,6 +64,7 @@ import android.os.RemoteException;
 import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.support.annotation.RestrictTo;
 import android.support.v4.app.BundleCompat;
 import android.support.v4.media.session.IMediaSession;
@@ -104,10 +105,18 @@ import java.util.List;
  *     &lt;/intent-filter>
  * &lt;/service>
  * </pre>
+ *
+ * <div class="special reference">
+ * <h3>Developer Guides</h3>
+ * <p>For information about building your media application, read the
+ * <a href="{@docRoot}guide/topics/media-apps/index.html">Media Apps</a> developer guide.</p>
+ * </div>
  */
 public abstract class MediaBrowserServiceCompat extends Service {
     static final String TAG = "MBServiceCompat";
     static final boolean DEBUG = Log.isLoggable(TAG, Log.DEBUG);
+
+    private static final float EPSILON = 0.00001f;
 
     private MediaBrowserServiceImpl mImpl;
 
@@ -228,8 +237,10 @@ public abstract class MediaBrowserServiceCompat extends Service {
         }
     }
 
+    @RequiresApi(21)
     class MediaBrowserServiceImplApi21 implements MediaBrowserServiceImpl,
             MediaBrowserServiceCompatApi21.ServiceCompatProxy {
+        final List<Bundle> mRootExtrasList = new ArrayList<>();
         Object mServiceObj;
         Messenger mMessenger;
 
@@ -246,34 +257,29 @@ public abstract class MediaBrowserServiceCompat extends Service {
         }
 
         @Override
-        public void setSessionToken(MediaSessionCompat.Token token) {
-            MediaBrowserServiceCompatApi21.setSessionToken(mServiceObj, token.getToken());
+        public void setSessionToken(final MediaSessionCompat.Token token) {
+            mHandler.postOrRun(new Runnable() {
+                @Override
+                public void run() {
+                    if (!mRootExtrasList.isEmpty()) {
+                        IMediaSession extraBinder = token.getExtraBinder();
+                        if (extraBinder != null) {
+                            for (Bundle rootExtras : mRootExtrasList) {
+                                BundleCompat.putBinder(rootExtras, EXTRA_SESSION_BINDER,
+                                        extraBinder.asBinder());
+                            }
+                        }
+                        mRootExtrasList.clear();
+                    }
+                    MediaBrowserServiceCompatApi21.setSessionToken(mServiceObj, token.getToken());
+                }
+            });
         }
 
         @Override
         public void notifyChildrenChanged(final String parentId, final Bundle options) {
-            if (mMessenger == null) {
-                MediaBrowserServiceCompatApi21.notifyChildrenChanged(mServiceObj, parentId);
-            } else {
-                mHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        for (IBinder binder : mConnections.keySet()) {
-                            ConnectionRecord connection = mConnections.get(binder);
-                            List<Pair<IBinder, Bundle>> callbackList =
-                                    connection.subscriptions.get(parentId);
-                            if (callbackList != null) {
-                                for (Pair<IBinder, Bundle> callback : callbackList) {
-                                    if (MediaBrowserCompatUtils.hasDuplicatedItems(
-                                            options, callback.second)) {
-                                        performLoadChildren(parentId, connection, callback.second);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
+            notifyChildrenChangedForFramework(parentId, options);
+            notifyChildrenChangedForCompat(parentId, options);
         }
 
         @Override
@@ -303,6 +309,8 @@ public abstract class MediaBrowserServiceCompat extends Service {
                     IMediaSession extraBinder = mSession.getExtraBinder();
                     BundleCompat.putBinder(rootExtras, EXTRA_SESSION_BINDER,
                             extraBinder == null ? null : extraBinder.asBinder());
+                } else {
+                    mRootExtrasList.add(rootExtras);
                 }
             }
             BrowserRoot root = MediaBrowserServiceCompat.this.onGetRoot(
@@ -345,8 +353,34 @@ public abstract class MediaBrowserServiceCompat extends Service {
             };
             MediaBrowserServiceCompat.this.onLoadChildren(parentId, result);
         }
+
+        void notifyChildrenChangedForFramework(final String parentId, final Bundle options) {
+            MediaBrowserServiceCompatApi21.notifyChildrenChanged(mServiceObj, parentId);
+        }
+
+        void notifyChildrenChangedForCompat(final String parentId, final Bundle options) {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (IBinder binder : mConnections.keySet()) {
+                        ConnectionRecord connection = mConnections.get(binder);
+                        List<Pair<IBinder, Bundle>> callbackList =
+                                connection.subscriptions.get(parentId);
+                        if (callbackList != null) {
+                            for (Pair<IBinder, Bundle> callback : callbackList) {
+                                if (MediaBrowserCompatUtils.hasDuplicatedItems(
+                                        options, callback.second)) {
+                                    performLoadChildren(parentId, connection, callback.second);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     }
 
+    @RequiresApi(23)
     class MediaBrowserServiceImplApi23 extends MediaBrowserServiceImplApi21 implements
             MediaBrowserServiceCompatApi23.ServiceCompatProxy {
         @Override
@@ -378,6 +412,64 @@ public abstract class MediaBrowserServiceCompat extends Service {
                 }
             };
             MediaBrowserServiceCompat.this.onLoadItem(itemId, result);
+        }
+    }
+
+    @RequiresApi(26)
+    class MediaBrowserServiceImplApi26 extends MediaBrowserServiceImplApi23 implements
+            MediaBrowserServiceCompatApi26.ServiceCompatProxy {
+        @Override
+        public void onCreate() {
+            mServiceObj = MediaBrowserServiceCompatApi26.createService(
+                    MediaBrowserServiceCompat.this, this);
+            MediaBrowserServiceCompatApi21.onCreate(mServiceObj);
+        }
+
+        @Override
+        public void onLoadChildren(String parentId,
+                final MediaBrowserServiceCompatApi26.ResultWrapper resultWrapper, Bundle options) {
+            final Result<List<MediaBrowserCompat.MediaItem>> result
+                    = new Result<List<MediaBrowserCompat.MediaItem>>(parentId) {
+                @Override
+                void onResultSent(List<MediaBrowserCompat.MediaItem> list) {
+                    List<Parcel> parcelList = null;
+                    if (list != null) {
+                        parcelList = new ArrayList<>();
+                        for (MediaBrowserCompat.MediaItem item : list) {
+                            Parcel parcel = Parcel.obtain();
+                            item.writeToParcel(parcel, 0);
+                            parcelList.add(parcel);
+                        }
+                    }
+                    resultWrapper.sendResult(parcelList, getFlags());
+                }
+
+                @Override
+                public void detach() {
+                    resultWrapper.detach();
+                }
+            };
+            MediaBrowserServiceCompat.this.onLoadChildren(parentId, result, options);
+        }
+
+        @Override
+        public Bundle getBrowserRootHints() {
+            // If EXTRA_MESSENGER_BINDER is used, mCurConnection is not null.
+            if (mCurConnection != null) {
+                return mCurConnection.rootHints == null ? null
+                        : new Bundle(mCurConnection.rootHints);
+            }
+            return MediaBrowserServiceCompatApi26.getBrowserRootHints(mServiceObj);
+        }
+
+        @Override
+        void notifyChildrenChangedForFramework(final String parentId, final Bundle options) {
+            if (options != null) {
+                MediaBrowserServiceCompatApi26.notifyChildrenChanged(mServiceObj, parentId,
+                        options);
+            } else {
+                super.notifyChildrenChangedForFramework(parentId, options);
+            }
         }
     }
 
@@ -463,14 +555,24 @@ public abstract class MediaBrowserServiceCompat extends Service {
     /**
      * All the info about a connection.
      */
-    private class ConnectionRecord {
+    private class ConnectionRecord implements IBinder.DeathRecipient {
         String pkg;
         Bundle rootHints;
         ServiceCallbacks callbacks;
         BrowserRoot root;
-        HashMap<String, List<Pair<IBinder, Bundle>>> subscriptions = new HashMap();
+        HashMap<String, List<Pair<IBinder, Bundle>>> subscriptions = new HashMap<>();
 
         ConnectionRecord() {
+        }
+
+        @Override
+        public void binderDied() {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mConnections.remove(callbacks.asBinder());
+                }
+            });
         }
     }
 
@@ -529,6 +631,7 @@ public abstract class MediaBrowserServiceCompat extends Service {
                 throw new IllegalStateException("sendProgressUpdate() called when either "
                         + "sendResult() or sendError() had already been called for: " + mDebug);
             }
+            checkExtraFields(extras);
             mSendProgressUpdateCalled = true;
             onProgressUpdateSent(extras);
         }
@@ -603,6 +706,19 @@ public abstract class MediaBrowserServiceCompat extends Service {
             throw new UnsupportedOperationException("It is not supported to send an error for "
                     + mDebug);
         }
+
+        private void checkExtraFields(Bundle extras) {
+            if (extras == null) {
+                return;
+            }
+            if (extras.containsKey(MediaBrowserCompat.EXTRA_DOWNLOAD_PROGRESS)) {
+                float value = extras.getFloat(MediaBrowserCompat.EXTRA_DOWNLOAD_PROGRESS);
+                if (value < -EPSILON || value > 1.0f + EPSILON) {
+                    throw new IllegalArgumentException("The value of the EXTRA_DOWNLOAD_PROGRESS "
+                            + "field must be a float number within [0.0, 1.0].");
+                }
+            }
+        }
     }
 
     private class ServiceBinderImpl {
@@ -646,6 +762,7 @@ public abstract class MediaBrowserServiceCompat extends Service {
                     } else {
                         try {
                             mConnections.put(b, connection);
+                            b.linkToDeath(connection, 0);
                             if (mSession != null) {
                                 callbacks.onConnect(connection.root.getRootId(),
                                         mSession, connection.root.getExtras());
@@ -670,6 +787,7 @@ public abstract class MediaBrowserServiceCompat extends Service {
                     final ConnectionRecord old = mConnections.remove(b);
                     if (old != null) {
                         // TODO
+                        old.callbacks.asBinder().unlinkToDeath(old, 0);
                     }
                 }
             });
@@ -751,6 +869,11 @@ public abstract class MediaBrowserServiceCompat extends Service {
                     connection.callbacks = callbacks;
                     connection.rootHints = rootHints;
                     mConnections.put(b, connection);
+                    try {
+                        b.linkToDeath(connection, 0);
+                    } catch (RemoteException e) {
+                        Log.w(TAG, "IBinder is already dead.");
+                    }
                 }
             });
         }
@@ -761,7 +884,10 @@ public abstract class MediaBrowserServiceCompat extends Service {
                 @Override
                 public void run() {
                     final IBinder b = callbacks.asBinder();
-                    mConnections.remove(b);
+                    ConnectionRecord old = mConnections.remove(b);
+                    if (old != null) {
+                        b.unlinkToDeath(old, 0);
+                    }
                 }
             });
         }
@@ -819,7 +945,7 @@ public abstract class MediaBrowserServiceCompat extends Service {
                 throws RemoteException;
     }
 
-    private class ServiceCallbacksCompat implements ServiceCallbacks {
+    private static class ServiceCallbacksCompat implements ServiceCallbacks {
         final Messenger mCallbacks;
 
         ServiceCallbacksCompat(Messenger callbacks) {
@@ -875,7 +1001,9 @@ public abstract class MediaBrowserServiceCompat extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        if (Build.VERSION.SDK_INT >= 23) {
+        if (Build.VERSION.SDK_INT >= 26) {
+            mImpl = new MediaBrowserServiceImplApi26();
+        } else if (Build.VERSION.SDK_INT >= 23) {
             mImpl = new MediaBrowserServiceImplApi23();
         } else if (Build.VERSION.SDK_INT >= 21) {
             mImpl = new MediaBrowserServiceImplApi21();
@@ -1040,6 +1168,8 @@ public abstract class MediaBrowserServiceCompat extends Service {
      * @param action The custom action sent from the media browser.
      * @param extras The bundle of service-specific arguments sent from the media browser.
      * @param result The {@link Result} to send the result of the requested custom action.
+     * @see MediaBrowserCompat#CUSTOM_ACTION_DOWNLOAD
+     * @see MediaBrowserCompat#CUSTOM_ACTION_REMOVE_DOWNLOADED_FILE
      */
     public void onCustomAction(@NonNull String action, Bundle extras,
             @NonNull Result<Bundle> result) {

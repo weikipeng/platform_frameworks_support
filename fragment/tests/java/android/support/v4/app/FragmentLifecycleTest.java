@@ -51,6 +51,7 @@ import android.support.v4.app.test.FragmentTestActivity;
 import android.support.v4.view.ViewCompat;
 import android.util.Pair;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -668,6 +669,239 @@ public class FragmentLifecycleTest {
         assertFalse(fragment1.mCalledOnResume);
     }
 
+    @Test
+    @UiThreadTest
+    public void testIsStateSaved() throws Throwable {
+        FragmentController fc = startupFragmentController(null);
+        FragmentManager fm = fc.getSupportFragmentManager();
+
+        Fragment f = new StrictFragment();
+        fm.beginTransaction()
+                .add(f, "1")
+                .commitNow();
+
+        assertFalse("fragment reported state saved while resumed", f.isStateSaved());
+
+        fc.dispatchPause();
+        fc.saveAllState();
+
+        assertTrue("fragment reported state not saved after saveAllState", f.isStateSaved());
+
+        fc.dispatchStop();
+        fc.dispatchReallyStop();
+
+        assertTrue("fragment reported state not saved after stop", f.isStateSaved());
+
+        fc.dispatchDestroy();
+
+        assertFalse("fragment reported state saved after destroy", f.isStateSaved());
+    }
+
+    @Test
+    @UiThreadTest
+    public void testSetArgumentsLifecycle() throws Throwable {
+        FragmentController fc = startupFragmentController(null);
+        FragmentManager fm = fc.getSupportFragmentManager();
+
+        Fragment f = new StrictFragment();
+        f.setArguments(new Bundle());
+
+        fm.beginTransaction()
+                .add(f, "1")
+                .commitNow();
+
+        f.setArguments(new Bundle());
+
+        fc.dispatchPause();
+        fc.saveAllState();
+
+        boolean threw = false;
+        try {
+            f.setArguments(new Bundle());
+        } catch (IllegalStateException ise) {
+            threw = true;
+        }
+        assertTrue("fragment allowed setArguments after state save", threw);
+
+        fc.dispatchStop();
+        fc.dispatchReallyStop();
+
+        threw = false;
+        try {
+            f.setArguments(new Bundle());
+        } catch (IllegalStateException ise) {
+            threw = true;
+        }
+        assertTrue("fragment allowed setArguments after stop", threw);
+
+        fc.dispatchDestroy();
+
+        // Fully destroyed, so fragments have been removed.
+        f.setArguments(new Bundle());
+    }
+
+    /*
+     * Test that target fragments are in a useful state when we restore them, even if they're
+     * on the back stack.
+     */
+
+    @Test
+    @UiThreadTest
+    public void targetFragmentRestoreLifecycleStateBackStack() throws Throwable {
+        final FragmentController fc1 = FragmentController.createController(
+                new HostCallbacks(mActivityRule.getActivity()));
+
+        final FragmentManager fm1 = fc1.getSupportFragmentManager();
+
+        fc1.attachHost(null);
+        fc1.dispatchCreate();
+
+        final Fragment target = new TargetFragment();
+        fm1.beginTransaction().add(target, "target").commitNow();
+
+        final Fragment referrer = new ReferrerFragment();
+        referrer.setTargetFragment(target, 0);
+
+        fm1.beginTransaction()
+                .remove(target)
+                .add(referrer, "referrer")
+                .addToBackStack(null)
+                .commit();
+
+        fc1.dispatchActivityCreated();
+        fc1.noteStateNotSaved();
+        fc1.execPendingActions();
+        fc1.doLoaderStart();
+        fc1.dispatchStart();
+        fc1.reportLoaderStart();
+        fc1.dispatchResume();
+        fc1.execPendingActions();
+
+        // Bring the state back down to destroyed, simulating an activity restart
+        fc1.dispatchPause();
+        final Parcelable savedState = fc1.saveAllState();
+        final FragmentManagerNonConfig nonconf = fc1.retainNestedNonConfig();
+        fc1.dispatchStop();
+        fc1.dispatchReallyStop();
+        fc1.dispatchDestroy();
+
+        final FragmentController fc2 = FragmentController.createController(
+                new HostCallbacks(mActivityRule.getActivity()));
+        final FragmentManager fm2 = fc2.getSupportFragmentManager();
+
+        fc2.attachHost(null);
+        fc2.restoreAllState(savedState, nonconf);
+        fc2.dispatchCreate();
+
+        fc2.dispatchActivityCreated();
+        fc2.noteStateNotSaved();
+        fc2.execPendingActions();
+        fc2.doLoaderStart();
+        fc2.dispatchStart();
+        fc2.reportLoaderStart();
+        fc2.dispatchResume();
+        fc2.execPendingActions();
+
+        // Bring the state back down to destroyed before we finish the test
+        fc2.dispatchPause();
+        fc2.saveAllState();
+        fc2.dispatchStop();
+        fc2.dispatchReallyStop();
+        fc2.dispatchDestroy();
+    }
+
+    @Test
+    @UiThreadTest
+    public void targetFragmentRestoreLifecycleStateManagerOrder() throws Throwable {
+        final FragmentController fc1 = FragmentController.createController(
+                new HostCallbacks(mActivityRule.getActivity()));
+
+        final FragmentManager fm1 = fc1.getSupportFragmentManager();
+
+        fc1.attachHost(null);
+        fc1.dispatchCreate();
+
+        final Fragment target1 = new TargetFragment();
+        final Fragment referrer1 = new ReferrerFragment();
+        referrer1.setTargetFragment(target1, 0);
+
+        fm1.beginTransaction().add(target1, "target1").add(referrer1, "referrer1").commitNow();
+
+        final Fragment target2 = new TargetFragment();
+        final Fragment referrer2 = new ReferrerFragment();
+        referrer2.setTargetFragment(target2, 0);
+
+        // Order shouldn't matter.
+        fm1.beginTransaction().add(referrer2, "referrer2").add(target2, "target2").commitNow();
+
+        fc1.dispatchActivityCreated();
+        fc1.noteStateNotSaved();
+        fc1.execPendingActions();
+        fc1.doLoaderStart();
+        fc1.dispatchStart();
+        fc1.reportLoaderStart();
+        fc1.dispatchResume();
+        fc1.execPendingActions();
+
+        // Bring the state back down to destroyed, simulating an activity restart
+        fc1.dispatchPause();
+        final Parcelable savedState = fc1.saveAllState();
+        final FragmentManagerNonConfig nonconf = fc1.retainNestedNonConfig();
+        fc1.dispatchStop();
+        fc1.dispatchReallyStop();
+        fc1.dispatchDestroy();
+
+        final FragmentController fc2 = FragmentController.createController(
+                new HostCallbacks(mActivityRule.getActivity()));
+        final FragmentManager fm2 = fc2.getSupportFragmentManager();
+
+        fc2.attachHost(null);
+        fc2.restoreAllState(savedState, nonconf);
+        fc2.dispatchCreate();
+
+        fc2.dispatchActivityCreated();
+        fc2.noteStateNotSaved();
+        fc2.execPendingActions();
+        fc2.doLoaderStart();
+        fc2.dispatchStart();
+        fc2.reportLoaderStart();
+        fc2.dispatchResume();
+        fc2.execPendingActions();
+
+        // Bring the state back down to destroyed before we finish the test
+        fc2.dispatchPause();
+        fc2.saveAllState();
+        fc2.dispatchStop();
+        fc2.dispatchReallyStop();
+        fc2.dispatchDestroy();
+    }
+
+    @Test
+    public void targetFragmentNoCycles() throws Throwable {
+        final Fragment one = new Fragment();
+        final Fragment two = new Fragment();
+        final Fragment three = new Fragment();
+
+        try {
+            one.setTargetFragment(two, 0);
+            two.setTargetFragment(three, 0);
+            three.setTargetFragment(one, 0);
+            assertTrue("creating a fragment target cycle did not throw IllegalArgumentException",
+                    false);
+        } catch (IllegalArgumentException e) {
+            // Success!
+        }
+    }
+
+    @Test
+    public void targetFragmentSetClear() throws Throwable {
+        final Fragment one = new Fragment();
+        final Fragment two = new Fragment();
+
+        one.setTargetFragment(two, 0);
+        one.setTargetFragment(null, 0);
+    }
+
     /**
      * FragmentActivity should not raise the state of a Fragment while it is being destroyed.
      */
@@ -731,6 +965,52 @@ public class FragmentLifecycleTest {
     }
 
     /**
+     * Check that retained fragments in the backstack correctly restored after two "configChanges"
+     */
+    @Test
+    @UiThreadTest
+    public void retainedFragmentInBackstack() throws Throwable {
+        FragmentController fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, null);
+        FragmentManager fm = fc.getSupportFragmentManager();
+
+        Fragment fragment1 = new StrictFragment();
+        fm.beginTransaction()
+                .add(fragment1, "1")
+                .addToBackStack(null)
+                .commit();
+        fm.executePendingTransactions();
+
+        Fragment child = new StrictFragment();
+        child.setRetainInstance(true);
+        fragment1.getChildFragmentManager().beginTransaction()
+                .add(child, "child").commit();
+        fragment1.getChildFragmentManager().executePendingTransactions();
+
+        Fragment fragment2 = new StrictFragment();
+        fm.beginTransaction()
+                .remove(fragment1)
+                .add(fragment2, "2")
+                .addToBackStack(null)
+                .commit();
+        fm.executePendingTransactions();
+
+        Pair<Parcelable, FragmentManagerNonConfig> savedState =
+                FragmentTestUtil.destroy(mActivityRule, fc);
+
+        fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, savedState);
+        savedState = FragmentTestUtil.destroy(mActivityRule, fc);
+        fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, savedState);
+        fm = fc.getSupportFragmentManager();
+        fm.popBackStackImmediate();
+        Fragment retainedChild = fm.findFragmentByTag("1")
+                .getChildFragmentManager().findFragmentByTag("child");
+        assertEquals(child, retainedChild);
+    }
+
+    /**
      * When a fragment has been optimized out, it state should still be saved during
      * save and restore instance state.
      */
@@ -766,6 +1046,168 @@ public class FragmentLifecycleTest {
         fragment1 = (SaveStateFragment) fm.findFragmentByTag("1");
         assertNotNull(fragment1);
         assertEquals(1, fragment1.getValue());
+    }
+
+    /**
+     * When there are no retained instance fragments, the FragmentManagerNonConfig should be
+     * null
+     */
+    @Test
+    @UiThreadTest
+    public void nullNonConfig() throws Throwable {
+        FragmentController fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, null);
+        FragmentManager fm = fc.getSupportFragmentManager();
+
+        Fragment fragment1 = new StrictFragment();
+        fm.beginTransaction()
+                .add(fragment1, "1")
+                .addToBackStack(null)
+                .commit();
+        fm.executePendingTransactions();
+        Pair<Parcelable, FragmentManagerNonConfig> savedState =
+                FragmentTestUtil.destroy(mActivityRule, fc);
+        assertNull(savedState.second);
+    }
+
+    /**
+     * When the FragmentManager state changes, the pending transactions should execute.
+     */
+    @Test
+    @UiThreadTest
+    public void runTransactionsOnChange() throws Throwable {
+        FragmentController fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, null);
+        FragmentManager fm = fc.getSupportFragmentManager();
+
+        RemoveHelloInOnResume fragment1 = new RemoveHelloInOnResume();
+        StrictFragment fragment2 = new StrictFragment();
+        fm.beginTransaction()
+                .add(fragment1, "1")
+                .setReorderingAllowed(false)
+                .commit();
+        fm.beginTransaction()
+                .add(fragment2, "Hello")
+                .setReorderingAllowed(false)
+                .commit();
+        fm.executePendingTransactions();
+
+        assertEquals(2, fm.getFragments().size());
+        assertTrue(fm.getFragments().contains(fragment1));
+        assertTrue(fm.getFragments().contains(fragment2));
+
+        Pair<Parcelable, FragmentManagerNonConfig> savedState =
+                FragmentTestUtil.destroy(mActivityRule, fc);
+        fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, savedState);
+        fm = fc.getSupportFragmentManager();
+
+        assertEquals(1, fm.getFragments().size());
+        for (Fragment fragment : fm.getFragments()) {
+            assertTrue(fragment instanceof RemoveHelloInOnResume);
+        }
+    }
+
+    @Test
+    @UiThreadTest
+    public void optionsMenu() throws Throwable {
+        FragmentController fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, null);
+        FragmentManager fm = fc.getSupportFragmentManager();
+
+        InvalidateOptionFragment fragment = new InvalidateOptionFragment();
+        fm.beginTransaction()
+                .add(android.R.id.content, fragment)
+                .commit();
+        fm.executePendingTransactions();
+
+        Menu menu = mock(Menu.class);
+        fc.dispatchPrepareOptionsMenu(menu);
+        assertTrue(fragment.onPrepareOptionsMenuCalled);
+        fragment.onPrepareOptionsMenuCalled = false;
+        FragmentTestUtil.destroy(mActivityRule, fc);
+        fc.dispatchPrepareOptionsMenu(menu);
+        assertFalse(fragment.onPrepareOptionsMenuCalled);
+    }
+
+    /**
+     * When a retained instance fragment is saved while in the back stack, it should go
+     * through onCreate() when it is popped back.
+     */
+    @Test
+    @UiThreadTest
+    public void retainInstanceWithOnCreate() throws Throwable {
+        FragmentController fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, null);
+        FragmentManager fm = fc.getSupportFragmentManager();
+
+        OnCreateFragment fragment1 = new OnCreateFragment();
+
+        fm.beginTransaction()
+                .add(fragment1, "1")
+                .commit();
+        fm.beginTransaction()
+                .remove(fragment1)
+                .addToBackStack(null)
+                .commit();
+
+        Pair<Parcelable, FragmentManagerNonConfig> savedState =
+                FragmentTestUtil.destroy(mActivityRule, fc);
+        Pair<Parcelable, FragmentManagerNonConfig> restartState =
+                Pair.create(savedState.first, null);
+
+        fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, restartState);
+
+        // Save again, but keep the state
+        savedState = FragmentTestUtil.destroy(mActivityRule, fc);
+
+        fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, savedState);
+
+        fm = fc.getSupportFragmentManager();
+
+        fm.popBackStackImmediate();
+        OnCreateFragment fragment2 = (OnCreateFragment) fm.findFragmentByTag("1");
+        assertTrue(fragment2.onCreateCalled);
+        fm.popBackStackImmediate();
+    }
+
+    /**
+     * A retained instance fragment should go through onCreate() once, even through save and
+     * restore.
+     */
+    @Test
+    @UiThreadTest
+    public void retainInstanceOneOnCreate() throws Throwable {
+        FragmentController fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, null);
+        FragmentManager fm = fc.getSupportFragmentManager();
+
+        OnCreateFragment fragment = new OnCreateFragment();
+
+        fm.beginTransaction()
+                .add(fragment, "fragment")
+                .commit();
+        fm.executePendingTransactions();
+
+        fm.beginTransaction()
+                .remove(fragment)
+                .addToBackStack(null)
+                .commit();
+
+        assertTrue(fragment.onCreateCalled);
+        fragment.onCreateCalled = false;
+
+        Pair<Parcelable, FragmentManagerNonConfig> savedState =
+                FragmentTestUtil.destroy(mActivityRule, fc);
+
+        fc = FragmentTestUtil.createController(mActivityRule);
+        FragmentTestUtil.resume(mActivityRule, fc, savedState);
+        fm = fc.getSupportFragmentManager();
+
+        fm.popBackStackImmediate();
+        assertFalse(fragment.onCreateCalled);
     }
 
     private void assertAnimationsMatch(FragmentManager fm, int enter, int exit, int popEnter,
@@ -1035,6 +1477,33 @@ public class FragmentLifecycleTest {
         }
     }
 
+    public static class TargetFragment extends Fragment {
+        public boolean calledCreate;
+
+        @Override
+        public void onCreate(@Nullable Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            calledCreate = true;
+        }
+    }
+
+    public static class ReferrerFragment extends Fragment {
+        @Override
+        public void onCreate(@Nullable Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+
+            Fragment target = getTargetFragment();
+            assertNotNull("target fragment was null during referrer onCreate", target);
+
+            if (!(target instanceof TargetFragment)) {
+                throw new IllegalStateException("target fragment was not a TargetFragment");
+            }
+
+            assertTrue("target fragment has not yet been created",
+                    ((TargetFragment) target).calledCreate);
+        }
+    }
+
     public static class SaveStateFragment extends Fragment {
         private static final String VALUE_KEY = "SaveStateFragment.mValue";
         private int mValue;
@@ -1061,6 +1530,46 @@ public class FragmentLifecycleTest {
 
         public int getValue() {
             return mValue;
+        }
+    }
+
+    public static class RemoveHelloInOnResume extends Fragment {
+        @Override
+        public void onResume() {
+            super.onResume();
+            Fragment fragment = getFragmentManager().findFragmentByTag("Hello");
+            if (fragment != null) {
+                getFragmentManager().beginTransaction().remove(fragment).commit();
+            }
+        }
+    }
+
+    public static class InvalidateOptionFragment extends Fragment {
+        public boolean onPrepareOptionsMenuCalled;
+
+        public InvalidateOptionFragment() {
+            setHasOptionsMenu(true);
+        }
+
+        @Override
+        public void onPrepareOptionsMenu(Menu menu) {
+            onPrepareOptionsMenuCalled = true;
+            assertNotNull(getContext());
+            super.onPrepareOptionsMenu(menu);
+        }
+    }
+
+    public static class OnCreateFragment extends Fragment {
+        public boolean onCreateCalled;
+
+        public OnCreateFragment() {
+            setRetainInstance(true);
+        }
+
+        @Override
+        public void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            onCreateCalled = true;
         }
     }
 }

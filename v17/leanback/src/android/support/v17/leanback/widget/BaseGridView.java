@@ -32,66 +32,79 @@ import android.view.View;
  * An abstract base class for vertically and horizontally scrolling lists. The items come
  * from the {@link RecyclerView.Adapter} associated with this view.
  * Do not directly use this class, use {@link VerticalGridView} and {@link HorizontalGridView}.
- * @hide
+ * The class is not intended to be subclassed other than {@link VerticalGridView} and
+ * {@link HorizontalGridView}.
  */
-@RestrictTo(LIBRARY_GROUP)
-abstract class BaseGridView extends RecyclerView {
+public abstract class BaseGridView extends RecyclerView {
 
     /**
      * Always keep focused item at a aligned position.  Developer can use
      * WINDOW_ALIGN_XXX and ITEM_ALIGN_XXX to define how focused item is aligned.
      * In this mode, the last focused position will be remembered and restored when focus
      * is back to the view.
+     * @hide
      */
+    @RestrictTo(LIBRARY_GROUP)
     public final static int FOCUS_SCROLL_ALIGNED = 0;
 
     /**
      * Scroll to make the focused item inside client area.
+     * @hide
      */
+    @RestrictTo(LIBRARY_GROUP)
     public final static int FOCUS_SCROLL_ITEM = 1;
 
     /**
      * Scroll a page of items when focusing to item outside the client area.
      * The page size matches the client area size of RecyclerView.
+     * @hide
      */
+    @RestrictTo(LIBRARY_GROUP)
     public final static int FOCUS_SCROLL_PAGE = 2;
 
     /**
      * The first item is aligned with the low edge of the viewport. When
-     * navigating away from the first item, the focus maintains a middle
-     * location.
+     * navigating away from the first item, the focus item is aligned to a key line location.
      * <p>
-     * For HorizontalGridView, low edge refers to left edge when RTL is false or
-     * right edge when RTL is true.
-     * For VerticalGridView, low edge refers to top edge.
+     * For HorizontalGridView, low edge refers to getPaddingLeft() when RTL is false or
+     * getWidth() - getPaddingRight() when RTL is true.
+     * For VerticalGridView, low edge refers to getPaddingTop().
      * <p>
-     * The middle location is calculated by "windowAlignOffset" and
+     * The key line location is calculated by "windowAlignOffset" and
      * "windowAlignOffsetPercent"; if neither of these two is defined, the
      * default value is 1/2 of the size.
+     * <p>
+     * Note if there are very few items between low edge and key line, use
+     * {@link #setWindowAlignmentPreferKeyLineOverLowEdge(boolean)} to control whether you prefer
+     * to align the items to key line or low edge. Default is preferring low edge.
      */
     public final static int WINDOW_ALIGN_LOW_EDGE = 1;
 
     /**
      * The last item is aligned with the high edge of the viewport when
      * navigating to the end of list. When navigating away from the end, the
-     * focus maintains a middle location.
+     * focus item is aligned to a key line location.
      * <p>
-     * For HorizontalGridView, high edge refers to right edge when RTL is false or
-     * left edge when RTL is true.
-     * For VerticalGridView, high edge refers to bottom edge.
+     * For HorizontalGridView, high edge refers to getWidth() - getPaddingRight() when RTL is false
+     * or getPaddingLeft() when RTL is true.
+     * For VerticalGridView, high edge refers to getHeight() - getPaddingBottom().
      * <p>
-     * The middle location is calculated by "windowAlignOffset" and
+     * The key line location is calculated by "windowAlignOffset" and
      * "windowAlignOffsetPercent"; if neither of these two is defined, the
      * default value is 1/2 of the size.
+     * <p>
+     * Note if there are very few items between high edge and key line, use
+     * {@link #setWindowAlignmentPreferKeyLineOverHighEdge(boolean)} to control whether you prefer
+     * to align the items to key line or high edge. Default is preferring key line.
      */
     public final static int WINDOW_ALIGN_HIGH_EDGE = 1 << 1;
 
     /**
      * The first item and last item are aligned with the two edges of the
      * viewport. When navigating in the middle of list, the focus maintains a
-     * middle location.
+     * key line location.
      * <p>
-     * The middle location is calculated by "windowAlignOffset" and
+     * The key line location is calculated by "windowAlignOffset" and
      * "windowAlignOffsetPercent"; if neither of these two is defined, the
      * default value is 1/2 of the size.
      */
@@ -99,9 +112,9 @@ abstract class BaseGridView extends RecyclerView {
             WINDOW_ALIGN_LOW_EDGE | WINDOW_ALIGN_HIGH_EDGE;
 
     /**
-     * The focused item always stays in a middle location.
+     * The focused item always stays in a key line location.
      * <p>
-     * The middle location is calculated by "windowAlignOffset" and
+     * The key line location is calculated by "windowAlignOffset" and
      * "windowAlignOffsetPercent"; if neither of these two is defined, the
      * default value is 1/2 of the size.
      */
@@ -199,7 +212,7 @@ abstract class BaseGridView extends RecyclerView {
      */
     int mInitialPrefetchItemCount = 4;
 
-    public BaseGridView(Context context, AttributeSet attrs, int defStyle) {
+    BaseGridView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         mLayoutManager = new GridLayoutManager(this);
         setLayoutManager(mLayoutManager);
@@ -225,7 +238,7 @@ abstract class BaseGridView extends RecyclerView {
         });
     }
 
-    protected void initBaseGridViewAttributes(Context context, AttributeSet attrs) {
+    void initBaseGridViewAttributes(Context context, AttributeSet attrs) {
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.lbBaseGridView);
         boolean throughFront = a.getBoolean(R.styleable.lbBaseGridView_focusOutFront, false);
         boolean throughEnd = a.getBoolean(R.styleable.lbBaseGridView_focusOutEnd, false);
@@ -252,7 +265,9 @@ abstract class BaseGridView extends RecyclerView {
      * <li>{@link #FOCUS_SCROLL_ITEM}</li>
      * <li>{@link #FOCUS_SCROLL_PAGE}</li>
      * </ul>
+     * @hide
      */
+    @RestrictTo(LIBRARY_GROUP)
     public void setFocusScrollStrategy(int scrollStrategy) {
         if (scrollStrategy != FOCUS_SCROLL_ALIGNED && scrollStrategy != FOCUS_SCROLL_ITEM
             && scrollStrategy != FOCUS_SCROLL_PAGE) {
@@ -269,7 +284,9 @@ abstract class BaseGridView extends RecyclerView {
      * <li>{@link #FOCUS_SCROLL_ITEM}</li>
      * <li>{@link #FOCUS_SCROLL_PAGE}</li>
      * </ul>
+     * @hide
      */
+    @RestrictTo(LIBRARY_GROUP)
     public int getFocusScrollStrategy() {
         return mLayoutManager.getFocusScrollStrategy();
     }
@@ -297,7 +314,62 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Sets the offset in pixels for window alignment.
+     * Sets whether prefer key line over low edge when {@link #WINDOW_ALIGN_LOW_EDGE} is used.
+     * When true, if there are very few items between low edge and key line, align items to key
+     * line instead of align items to low edge.
+     * Default value is false (aka prefer align to low edge).
+     *
+     * @param preferKeyLineOverLowEdge True to prefer key line over low edge, false otherwise.
+     */
+    public void setWindowAlignmentPreferKeyLineOverLowEdge(boolean preferKeyLineOverLowEdge) {
+        mLayoutManager.mWindowAlignment.mainAxis()
+                .setPreferKeylineOverLowEdge(preferKeyLineOverLowEdge);
+        requestLayout();
+    }
+
+
+    /**
+     * Returns whether prefer key line over high edge when {@link #WINDOW_ALIGN_HIGH_EDGE} is used.
+     * When true, if there are very few items between high edge and key line, align items to key
+     * line instead of align items to high edge.
+     * Default value is true (aka prefer align to key line).
+     *
+     * @param preferKeyLineOverHighEdge True to prefer key line over high edge, false otherwise.
+     */
+    public void setWindowAlignmentPreferKeyLineOverHighEdge(boolean preferKeyLineOverHighEdge) {
+        mLayoutManager.mWindowAlignment.mainAxis()
+                .setPreferKeylineOverHighEdge(preferKeyLineOverHighEdge);
+        requestLayout();
+    }
+
+    /**
+     * Returns whether prefer key line over low edge when {@link #WINDOW_ALIGN_LOW_EDGE} is used.
+     * When true, if there are very few items between low edge and key line, align items to key
+     * line instead of align items to low edge.
+     * Default value is false (aka prefer align to low edge).
+     *
+     * @return True to prefer key line over low edge, false otherwise.
+     */
+    public boolean isWindowAlignmentPreferKeyLineOverLowEdge() {
+        return mLayoutManager.mWindowAlignment.mainAxis().isPreferKeylineOverLowEdge();
+    }
+
+
+    /**
+     * Returns whether prefer key line over high edge when {@link #WINDOW_ALIGN_HIGH_EDGE} is used.
+     * When true, if there are very few items between high edge and key line, align items to key
+     * line instead of align items to high edge.
+     * Default value is true (aka prefer align to key line).
+     *
+     * @return True to prefer key line over high edge, false otherwise.
+     */
+    public boolean isWindowAlignmentPreferKeyLineOverHighEdge() {
+        return mLayoutManager.mWindowAlignment.mainAxis().isPreferKeylineOverHighEdge();
+    }
+
+
+    /**
+     * Sets the offset in pixels for window alignment key line.
      *
      * @param offset The number of pixels to offset.  If the offset is positive,
      *        it is distance from low edge (see {@link #WINDOW_ALIGN_LOW_EDGE});
@@ -311,7 +383,7 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Returns the offset in pixels for window alignment.
+     * Returns the offset in pixels for window alignment key line.
      *
      * @return The number of pixels to offset.  If the offset is positive,
      *        it is distance from low edge (see {@link #WINDOW_ALIGN_LOW_EDGE});
@@ -324,7 +396,7 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Sets the offset percent for window alignment in addition to {@link
+     * Sets the offset percent for window alignment key line in addition to {@link
      * #getWindowAlignmentOffset()}.
      *
      * @param offsetPercent Percentage to offset. E.g., 40 means 40% of the
@@ -338,7 +410,7 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Returns the offset percent for window alignment in addition to
+     * Returns the offset percent for window alignment key line in addition to
      * {@link #getWindowAlignmentOffset()}.
      *
      * @return Percentage to offset. E.g., 40 means 40% of the width from the
@@ -350,13 +422,12 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Sets the absolute offset in pixels for item alignment.
+     * Sets number of pixels to the end of low edge. Supports right to left layout direction.
      * Item alignment settings are ignored for the child if {@link ItemAlignmentFacet}
      * is provided by {@link RecyclerView.ViewHolder} or {@link FacetProviderAdapter}.
      *
-     * @param offset The number of pixels to offset. Can be negative for
-     *        alignment from the high edge, or positive for alignment from the
-     *        low edge.
+     * @param offset In left to right or vertical case, it's the offset added to left/top edge.
+     *               In right to left case, it's the offset subtracted from right edge.
      */
     public void setItemAlignmentOffset(int offset) {
         mLayoutManager.setItemAlignmentOffset(offset);
@@ -364,23 +435,27 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Returns the absolute offset in pixels for item alignment.
+     * Returns number of pixels to the end of low edge. Supports right to left layout direction. In
+     * left to right or vertical case, it's the offset added to left/top edge. In right to left
+     * case, it's the offset subtracted from right edge.
+     * Item alignment settings are ignored for the child if {@link ItemAlignmentFacet}
+     * is provided by {@link RecyclerView.ViewHolder} or {@link FacetProviderAdapter}.
      *
-     * @return The number of pixels to offset. Will be negative for alignment
-     *         from the high edge, or positive for alignment from the low edge.
-     *         Default value is 0.
+     * @return The number of pixels to the end of low edge.
      */
     public int getItemAlignmentOffset() {
         return mLayoutManager.getItemAlignmentOffset();
     }
 
     /**
-     * Set to true if include padding in calculating item align offset.
-     * Item alignment settings are ignored for the child if {@link ItemAlignmentFacet}
-     * is provided by {@link RecyclerView.ViewHolder} or {@link FacetProviderAdapter}.
-     *
-     * @param withPadding When it is true: we include left/top padding for positive
-     *          item offset, include right/bottom padding for negative item offset.
+     * Sets whether applies padding to item alignment when {@link #getItemAlignmentOffsetPercent()}
+     * is 0 or 100.
+     * <p>When true:
+     * Applies start/top padding if {@link #getItemAlignmentOffsetPercent()} is 0.
+     * Applies end/bottom padding if {@link #getItemAlignmentOffsetPercent()} is 100.
+     * Does not apply padding if {@link #getItemAlignmentOffsetPercent()} is neither 0 nor 100.
+     * </p>
+     * <p>When false: does not apply padding</p>
      */
     public void setItemAlignmentOffsetWithPadding(boolean withPadding) {
         mLayoutManager.setItemAlignmentOffsetWithPadding(withPadding);
@@ -388,7 +463,14 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Returns true if include padding in calculating item align offset.
+     * Returns true if applies padding to item alignment when
+     * {@link #getItemAlignmentOffsetPercent()} is 0 or 100; returns false otherwise.
+     * <p>When true:
+     * Applies start/top padding when {@link #getItemAlignmentOffsetPercent()} is 0.
+     * Applies end/bottom padding when {@link #getItemAlignmentOffsetPercent()} is 100.
+     * Does not apply padding if {@link #getItemAlignmentOffsetPercent()} is neither 0 nor 100.
+     * </p>
+     * <p>When false: does not apply padding</p>
      */
     public boolean isItemAlignmentOffsetWithPadding() {
         return mLayoutManager.isItemAlignmentOffsetWithPadding();
@@ -423,8 +505,8 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Sets the id of the view to align with. Use {@link android.view.View#NO_ID} (default)
-     * for the item view itself.
-     * Item alignment settings are ignored for the child if {@link ItemAlignmentFacet}
+     * for the root {@link RecyclerView.ViewHolder#itemView}.
+     * Item alignment settings on BaseGridView are if {@link ItemAlignmentFacet}
      * is provided by {@link RecyclerView.ViewHolder} or {@link FacetProviderAdapter}.
      */
     public void setItemAlignmentViewId(int viewId) {
@@ -432,7 +514,10 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Returns the id of the view to align with, or zero for the item view itself.
+     * Returns the id of the view to align with, or {@link android.view.View#NO_ID} for the root
+     * {@link RecyclerView.ViewHolder#itemView}.
+     * @return The id of the view to align with, or {@link android.view.View#NO_ID} for the root
+     * {@link RecyclerView.ViewHolder#itemView}.
      */
     public int getItemAlignmentViewId() {
         return mLayoutManager.getItemAlignmentViewId();
@@ -448,7 +533,8 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Sets the spacing in pixels between two child items.
+     * Sets the vertical and horizontal spacing in pixels between two child items.
+     * @param spacing Vertical and horizontal spacing in pixels between two child items.
      */
     public void setItemSpacing(int spacing) {
         mLayoutManager.setItemSpacing(spacing);
@@ -492,7 +578,8 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Sets the spacing in pixels between two child items vertically.
+     * Sets the vertical spacing in pixels between two child items.
+     * @param spacing Vertical spacing between two child items.
      */
     public void setVerticalSpacing(int spacing) {
         mLayoutManager.setVerticalSpacing(spacing);
@@ -500,14 +587,16 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Returns the spacing in pixels between two child items vertically.
+     * Returns the vertical spacing in pixels between two child items.
+     * @return The vertical spacing in pixels between two child items.
      */
     public int getVerticalSpacing() {
         return mLayoutManager.getVerticalSpacing();
     }
 
     /**
-     * Sets the spacing in pixels between two child items horizontally.
+     * Sets the horizontal spacing in pixels between two child items.
+     * @param spacing Horizontal spacing in pixels between two child items.
      */
     public void setHorizontalSpacing(int spacing) {
         mLayoutManager.setHorizontalSpacing(spacing);
@@ -515,7 +604,8 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Returns the spacing in pixels between two child items horizontally.
+     * Returns the horizontal spacing in pixels between two child items.
+     * @return The Horizontal spacing in pixels between two child items.
      */
     public int getHorizontalSpacing() {
         return mLayoutManager.getHorizontalSpacing();
@@ -588,7 +678,9 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Changes the selected item and/or subposition immediately without animation.
+     * @hide
      */
+    @RestrictTo(LIBRARY_GROUP)
     public void setSelectedPositionWithSub(int position, int subposition) {
         mLayoutManager.setSelectionWithSub(position, subposition, 0);
     }
@@ -606,7 +698,9 @@ abstract class BaseGridView extends RecyclerView {
      * Changes the selected item and/or subposition immediately without animation, scrollExtra is
      * applied in primary scroll direction.  The scrollExtra will be kept until
      * another {@link #setSelectedPosition} or {@link #setSelectedPositionSmooth} call.
+     * @hide
      */
+    @RestrictTo(LIBRARY_GROUP)
     public void setSelectedPositionWithSub(int position, int subposition, int scrollExtra) {
         mLayoutManager.setSelectionWithSub(position, subposition, scrollExtra);
     }
@@ -614,6 +708,7 @@ abstract class BaseGridView extends RecyclerView {
     /**
      * Changes the selected item and run an animation to scroll to the target
      * position.
+     * @param position Adapter position of the item to select.
      */
     public void setSelectedPositionSmooth(int position) {
         mLayoutManager.setSelectionSmooth(position);
@@ -622,7 +717,9 @@ abstract class BaseGridView extends RecyclerView {
     /**
      * Changes the selected item and/or subposition, runs an animation to scroll to the target
      * position.
+     * @hide
      */
+    @RestrictTo(LIBRARY_GROUP)
     public void setSelectedPositionSmoothWithSub(int position, int subposition) {
         mLayoutManager.setSelectionSmoothWithSub(position, subposition);
     }
@@ -680,7 +777,8 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     /**
-     * Returns the selected item position.
+     * Returns the adapter position of selected item.
+     * @return The adapter position of selected item.
      */
     public int getSelectedPosition() {
         return mLayoutManager.getSelection();
@@ -691,15 +789,17 @@ abstract class BaseGridView extends RecyclerView {
      * multiple {@link ItemAlignmentFacet}s provided by {@link RecyclerView.ViewHolder}
      * or {@link FacetProviderAdapter}.  Zero is returned when no {@link ItemAlignmentFacet}
      * is defined.
+     * @hide
      */
+    @RestrictTo(LIBRARY_GROUP)
     public int getSelectedSubPosition() {
         return mLayoutManager.getSubSelection();
     }
 
     /**
-     * Sets whether an animation should run when a child changes size or when adding
+     * Sets whether ItemAnimator should run when a child changes size or when adding
      * or removing a child.
-     * <p><i>Unstable API, might change later.</i>
+     * @param animateChildLayout True to enable ItemAnimator, false to disable.
      */
     public void setAnimateChildLayout(boolean animateChildLayout) {
         if (mAnimateChildLayout != animateChildLayout) {
@@ -716,7 +816,7 @@ abstract class BaseGridView extends RecyclerView {
     /**
      * Returns true if an animation will run when a child changes size or when
      * adding or removing a child.
-     * <p><i>Unstable API, might change later.</i>
+     * @return True if ItemAnimator is enabled, false otherwise.
      */
     public boolean isChildLayoutAnimated() {
         return mAnimateChildLayout;
@@ -781,6 +881,7 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Disables or enables focus search.
+     * @param disabled True to disable focus search, false to enable.
      */
     public final void setFocusSearchDisabled(boolean disabled) {
         // LayoutManager may detachView and attachView in fastRelayout, it causes RowsFragment
@@ -791,6 +892,7 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Returns true if focus search is disabled.
+     * @return True if focus search is disabled.
      */
     public final boolean isFocusSearchDisabled() {
         return mLayoutManager.isFocusSearchDisabled();
@@ -799,6 +901,7 @@ abstract class BaseGridView extends RecyclerView {
     /**
      * Enables or disables layout.  All children will be removed when layout is
      * disabled.
+     * @param layoutEnabled True to enable layout, false otherwise.
      */
     public void setLayoutEnabled(boolean layoutEnabled) {
         mLayoutManager.setLayoutEnabled(layoutEnabled);
@@ -806,6 +909,7 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Changes and overrides children's visibility.
+     * @param visibility See {@link View#getVisibility()}.
      */
     public void setChildrenVisibility(int visibility) {
         mLayoutManager.setChildrenVisibility(visibility);
@@ -813,6 +917,7 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Enables or disables pruning of children.  Disable is useful during transition.
+     * @param pruneChild True to prune children out side visible area, false to enable.
      */
     public void setPruneChild(boolean pruneChild) {
         mLayoutManager.setPruneChild(pruneChild);
@@ -820,13 +925,15 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Enables or disables scrolling.  Disable is useful during transition.
+     * @param scrollEnabled True to enable scroll, false to disable.
      */
     public void setScrollEnabled(boolean scrollEnabled) {
         mLayoutManager.setScrollEnabled(scrollEnabled);
     }
 
     /**
-     * Returns true if scrolling is enabled.
+     * Returns true if scrolling is enabled, false otherwise.
+     * @return True if scrolling is enabled, false otherwise.
      */
     public boolean isScrollEnabled() {
         return mLayoutManager.isScrollEnabled();
@@ -835,24 +942,25 @@ abstract class BaseGridView extends RecyclerView {
     /**
      * Returns true if the view at the given position has a same row sibling
      * in front of it.  This will return true if first item view is not created.
-     * So application should check in both {@link OnChildSelectedListener} and {@link
-     * OnChildLaidOutListener}.
      *
      * @param position Position in adapter.
+     * @return True if the view at the given position has a same row sibling in front of it.
      */
     public boolean hasPreviousViewInSameRow(int position) {
         return mLayoutManager.hasPreviousViewInSameRow(position);
     }
 
     /**
-     * Enables or disables the default "focus draw at last" order rule.
+     * Enables or disables the default "focus draw at last" order rule. Default is enabled.
+     * @param enabled True to draw the selected child at last, false otherwise.
      */
     public void setFocusDrawingOrderEnabled(boolean enabled) {
         super.setChildrenDrawingOrderEnabled(enabled);
     }
 
     /**
-     * Returns true if default "focus draw at last" order rule is enabled.
+     * Returns true if draws selected child at last, false otherwise. Default is enabled.
+     * @return True if draws selected child at last, false otherwise.
      */
     public boolean isFocusDrawingOrderEnabled() {
         return super.isChildrenDrawingOrderEnabled();
@@ -860,6 +968,7 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Sets the touch intercept listener.
+     * @param listener The touch intercept listener.
      */
     public void setOnTouchInterceptListener(OnTouchInterceptListener listener) {
         mOnTouchInterceptListener = listener;
@@ -867,6 +976,7 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Sets the generic motion intercept listener.
+     * @param listener The motion intercept listener.
      */
     public void setOnMotionInterceptListener(OnMotionInterceptListener listener) {
         mOnMotionInterceptListener = listener;
@@ -874,6 +984,7 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Sets the key intercept listener.
+     * @param listener The key intercept listener.
      */
     public void setOnKeyInterceptListener(OnKeyInterceptListener listener) {
         mOnKeyInterceptListener = listener;
@@ -881,6 +992,7 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Sets the unhandled key listener.
+     * @param listener The unhandled key intercept listener.
      */
     public void setOnUnhandledKeyListener(OnUnhandledKeyListener listener) {
         mOnUnhandledKeyListener = listener;
@@ -888,6 +1000,7 @@ abstract class BaseGridView extends RecyclerView {
 
     /**
      * Returns the unhandled key listener.
+     * @return The unhandled key listener.
      */
     public OnUnhandledKeyListener getOnUnhandledKeyListener() {
         return mOnUnhandledKeyListener;
@@ -915,7 +1028,7 @@ abstract class BaseGridView extends RecyclerView {
     }
 
     @Override
-    public boolean dispatchGenericFocusedEvent(MotionEvent event) {
+    protected boolean dispatchGenericFocusedEvent(MotionEvent event) {
         if (mOnMotionInterceptListener != null) {
             if (mOnMotionInterceptListener.onInterceptMotionEvent(event)) {
                 return true;

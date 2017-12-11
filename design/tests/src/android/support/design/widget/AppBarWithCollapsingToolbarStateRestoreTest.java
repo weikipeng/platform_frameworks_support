@@ -18,28 +18,36 @@ package android.support.design.widget;
 
 import static android.support.design.testutils.AppBarLayoutMatchers.isCollapsed;
 import static android.support.design.testutils.SwipeUtils.swipeUp;
-import static android.support.design.testutils.TestUtils.rotateOrientation;
 import static android.support.design.testutils.TestUtilsMatchers.hasZ;
 import static android.support.test.espresso.Espresso.onView;
 import static android.support.test.espresso.assertion.ViewAssertions.matches;
 import static android.support.test.espresso.matcher.ViewMatchers.withId;
 
-import android.app.Activity;
 import android.support.design.test.R;
+import android.support.design.testutils.ActivityUtils;
+import android.support.test.filters.LargeTest;
 
+import org.junit.Before;
 import org.junit.Test;
 
+@LargeTest
 public class AppBarWithCollapsingToolbarStateRestoreTest
         extends BaseInstrumentationTestCase<AppBarLayoutCollapsePinTestActivity> {
+
+    private AppBarLayoutCollapsePinTestActivity mActivity;
 
     public AppBarWithCollapsingToolbarStateRestoreTest() {
         super(AppBarLayoutCollapsePinTestActivity.class);
     }
 
+    @Before
+    public void setup() {
+        mActivity = mActivityTestRule.getActivity();
+    }
+
     @Test
-    public void testRotateAndRestore() {
-        Activity activity = mActivityTestRule.getActivity();
-        final AppBarLayout appBar = (AppBarLayout) activity.findViewById(R.id.app_bar);
+    public void testRecreateAndRestore() throws Throwable {
+        final AppBarLayout appBar = (AppBarLayout) mActivity.findViewById(R.id.app_bar);
 
         // Swipe up and collapse the AppBarLayout
         onView(withId(R.id.coordinator_layout))
@@ -51,13 +59,12 @@ public class AppBarWithCollapsingToolbarStateRestoreTest
                 .check(matches(hasZ()))
                 .check(matches(isCollapsed()));
 
-        // Now rotate the Activity
-        rotateOrientation(activity);
+        mActivity = ActivityUtils.recreateActivity(mActivityTestRule, mActivity);
+        ActivityUtils.waitForExecution(mActivityTestRule);
 
         // And check that the app bar still is restored correctly
         onView(withId(R.id.app_bar))
                 .check(matches(hasZ()))
                 .check(matches(isCollapsed()));
     }
-
 }

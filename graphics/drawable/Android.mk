@@ -23,9 +23,9 @@ include $(CLEAR_VARS)
 LOCAL_USE_AAPT2 := true
 LOCAL_MODULE := android-support-vectordrawable
 LOCAL_SDK_VERSION := $(SUPPORT_CURRENT_SDK_VERSION)
-LOCAL_SRC_FILES := $(call all-java-files-under, static/src)
+LOCAL_SRC_FILES := $(call all-java-files-under, static/src/main/java)
 LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/static/res
-LOCAL_MANIFEST_FILE := static/AndroidManifest-make.xml
+LOCAL_MANIFEST_FILE := static/AndroidManifest.xml
 LOCAL_SHARED_ANDROID_LIBRARIES := \
     android-support-compat \
     android-support-annotations
@@ -42,9 +42,9 @@ include $(CLEAR_VARS)
 LOCAL_USE_AAPT2 := true
 LOCAL_MODULE := android-support-animatedvectordrawable
 LOCAL_SDK_VERSION := $(SUPPORT_CURRENT_SDK_VERSION)
-LOCAL_SRC_FILES := $(call all-java-files-under, animated/src)
+LOCAL_SRC_FILES := $(call all-java-files-under, animated/src/main/java)
 LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/animated/res
-LOCAL_MANIFEST_FILE := animated/AndroidManifest-make.xml
+LOCAL_MANIFEST_FILE := animated/AndroidManifest.xml
 LOCAL_SHARED_ANDROID_LIBRARIES := \
     android-support-compat \
     android-support-vectordrawable \

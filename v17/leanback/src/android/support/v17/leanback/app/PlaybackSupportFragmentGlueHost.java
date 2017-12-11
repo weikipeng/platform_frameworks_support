@@ -1,6 +1,3 @@
-// CHECKSTYLE:OFF Generated code
-/* This file is auto-generated from VideoPlaybackFragmentGlueHost.java.  DO NOT MODIFY. */
-
 /*
  * Copyright (C) 2016 The Android Open Source Project
  *
@@ -21,6 +18,7 @@ import android.support.v17.leanback.widget.Action;
 import android.support.v17.leanback.widget.OnActionClickedListener;
 import android.support.v17.leanback.widget.OnItemViewClickedListener;
 import android.support.v17.leanback.widget.PlaybackRowPresenter;
+import android.support.v17.leanback.widget.PlaybackSeekUi;
 import android.support.v17.leanback.widget.Presenter;
 import android.support.v17.leanback.widget.Row;
 import android.support.v17.leanback.widget.RowPresenter;
@@ -30,7 +28,7 @@ import android.view.View;
  * {@link PlaybackGlueHost} implementation
  * the interaction between this class and {@link PlaybackSupportFragment}.
  */
-public class PlaybackSupportFragmentGlueHost extends PlaybackGlueHost {
+public class PlaybackSupportFragmentGlueHost extends PlaybackGlueHost implements PlaybackSeekUi {
     private final PlaybackSupportFragment mFragment;
 
     public PlaybackSupportFragmentGlueHost(PlaybackSupportFragment fragment) {
@@ -38,8 +36,13 @@ public class PlaybackSupportFragmentGlueHost extends PlaybackGlueHost {
     }
 
     @Override
-    public void setFadingEnabled(boolean enable) {
-        mFragment.setFadingEnabled(enable);
+    public void setControlsOverlayAutoHideEnabled(boolean enabled) {
+        mFragment.setControlsOverlayAutoHideEnabled(enabled);
+    }
+
+    @Override
+    public boolean isControlsOverlayAutoHideEnabled() {
+        return mFragment.isControlsOverlayAutoHideEnabled();
     }
 
     @Override
@@ -87,5 +90,48 @@ public class PlaybackSupportFragmentGlueHost extends PlaybackGlueHost {
     @Override
     public void fadeOut() {
         mFragment.fadeOut();
+    }
+
+    @Override
+    public boolean isControlsOverlayVisible() {
+        return mFragment.isControlsOverlayVisible();
+    }
+
+    @Override
+    public void hideControlsOverlay(boolean runAnimation) {
+        mFragment.hideControlsOverlay(runAnimation);
+    }
+
+    @Override
+    public void showControlsOverlay(boolean runAnimation) {
+        mFragment.showControlsOverlay(runAnimation);
+    }
+
+    @Override
+    public void setPlaybackSeekUiClient(Client client) {
+        mFragment.setPlaybackSeekUiClient(client);
+    }
+
+    final PlayerCallback mPlayerCallback =
+            new PlayerCallback() {
+                @Override
+                public void onBufferingStateChanged(boolean start) {
+                    mFragment.onBufferingStateChanged(start);
+                }
+
+                @Override
+                public void onError(int errorCode, CharSequence errorMessage) {
+                    mFragment.onError(errorCode, errorMessage);
+                }
+
+                @Override
+                public void onVideoSizeChanged(int videoWidth, int videoHeight) {
+                    mFragment.onVideoSizeChanged(videoWidth, videoHeight);
+                }
+            };
+
+    @Override
+    public PlayerCallback getPlayerCallback() {
+        return mPlayerCallback;
     }
 }

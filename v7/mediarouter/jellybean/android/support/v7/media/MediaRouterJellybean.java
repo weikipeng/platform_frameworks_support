@@ -16,7 +16,6 @@
 
 package android.support.v7.media;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
@@ -24,14 +23,12 @@ import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
 @RequiresApi(16)
-@TargetApi(16)
 final class MediaRouterJellybean {
     private static final String TAG = "MediaRouterJellybean";
 

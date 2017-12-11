@@ -16,10 +16,10 @@
 
 package android.support.design.widget;
 
+import android.animation.Animator;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.StateListAnimator;
-import android.annotation.TargetApi;
 import android.content.res.ColorStateList;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
@@ -33,15 +33,17 @@ import android.support.annotation.RequiresApi;
 import android.support.v4.graphics.drawable.DrawableCompat;
 import android.view.View;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @RequiresApi(21)
-@TargetApi(21)
-class FloatingActionButtonLollipop extends FloatingActionButtonIcs {
+class FloatingActionButtonLollipop extends FloatingActionButtonImpl {
 
     private InsetDrawable mInsetDrawable;
 
     FloatingActionButtonLollipop(VisibilityAwareImageButton view,
-            ShadowViewDelegate shadowViewDelegate, ValueAnimatorCompat.Creator animatorCreator) {
-        super(view, shadowViewDelegate, animatorCreator);
+            ShadowViewDelegate shadowViewDelegate) {
+        super(view, shadowViewDelegate);
     }
 
     @Override
@@ -82,8 +84,7 @@ class FloatingActionButtonLollipop extends FloatingActionButtonIcs {
 
     @Override
     void onElevationsChanged(final float elevation, final float pressedTranslationZ) {
-        final int sdk = Build.VERSION.SDK_INT;
-        if (sdk == 21) {
+        if (Build.VERSION.SDK_INT == 21) {
             // Animations produce NPE in version 21. Bluntly set the values instead (matching the
             // logic in the animations below).
             if (mView.isEnabled()) {
@@ -118,16 +119,19 @@ class FloatingActionButtonLollipop extends FloatingActionButtonIcs {
 
             // Animate translationZ to 0 if not pressed
             set = new AnimatorSet();
-            set.playSequentially(
-                    ObjectAnimator.ofFloat(mView, "elevation", elevation).setDuration(0),
-                    // This is a no-op animation which exists here only for introducing the duration
-                    // because setting the delay (on the next animation) via "setDelay" or "after"
-                    // can trigger a NPE between android versions 22 and 24 (due to a framework
-                    // bug). The issue has been fixed in version 25.
-                    ObjectAnimator.ofFloat(mView, View.TRANSLATION_Z, mView.getTranslationZ())
-                            .setDuration(PRESSED_ANIM_DELAY),
-                    ObjectAnimator.ofFloat(mView, View.TRANSLATION_Z, 0f)
-                            .setDuration(PRESSED_ANIM_DURATION));
+            List<Animator> animators = new ArrayList<>();
+            animators.add(ObjectAnimator.ofFloat(mView, "elevation", elevation).setDuration(0));
+            if (Build.VERSION.SDK_INT >= 22 && Build.VERSION.SDK_INT <= 24) {
+                // This is a no-op animation which exists here only for introducing the duration
+                // because setting the delay (on the next animation) via "setDelay" or "after"
+                // can trigger a NPE between android versions 22 and 24 (due to a framework
+                // bug). The issue has been fixed in version 25.
+                animators.add(ObjectAnimator.ofFloat(mView, View.TRANSLATION_Z,
+                        mView.getTranslationZ()).setDuration(PRESSED_ANIM_DELAY));
+            }
+            animators.add(ObjectAnimator.ofFloat(mView, View.TRANSLATION_Z, 0f)
+                    .setDuration(PRESSED_ANIM_DURATION));
+            set.playSequentially(animators.toArray(new ObjectAnimator[0]));
             set.setInterpolator(ANIM_INTERPOLATOR);
             stateListAnimator.addState(ENABLED_STATE_SET, set);
 

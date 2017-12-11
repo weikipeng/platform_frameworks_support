@@ -34,9 +34,9 @@ limitations under the License.
     <string name="lb_playback_controls_skip_next" msgid="2946499493161095772">"Παράβλεψη επόμενου"</string>
     <string name="lb_playback_controls_skip_previous" msgid="2326801832933178348">"Παράβλεψη προηγούμενου"</string>
     <string name="lb_playback_controls_more_actions" msgid="2330770008796987655">"Περισσότερες ενέργειες"</string>
-    <string name="lb_playback_controls_thumb_up" msgid="6530420347129222601">"Κατάργηση επιλογής \"Μου αρέσουν\""</string>
+    <string name="lb_playback_controls_thumb_up" msgid="6530420347129222601">"Αποεπιλογή \"Μου αρέσουν\""</string>
     <string name="lb_playback_controls_thumb_up_outline" msgid="1577637924003500946">"Επιλογή \"Μου αρέσουν\""</string>
-    <string name="lb_playback_controls_thumb_down" msgid="4498041193172964797">"Κατάργηση επιλογής \"Δεν μου αρέσουν\""</string>
+    <string name="lb_playback_controls_thumb_down" msgid="4498041193172964797">"Αποεπιλογή \"Δεν μου αρέσουν\""</string>
     <string name="lb_playback_controls_thumb_down_outline" msgid="2936020280629424365">"Επιλογή \"Δεν μου αρέσουν\""</string>
     <string name="lb_playback_controls_repeat_none" msgid="87476947476529036">"Καμία επανάληψη"</string>
     <string name="lb_playback_controls_repeat_all" msgid="6730354406289599000">"Επανάληψη όλων"</string>
@@ -48,10 +48,12 @@ limitations under the License.
     <string name="lb_playback_controls_closed_captioning_enable" msgid="2429655367176440226">"Ενεργοποίηση υποτίτλων"</string>
     <string name="lb_playback_controls_closed_captioning_disable" msgid="6133362019475930048">"Απενεργοποίηση υποτίτλων"</string>
     <string name="lb_playback_controls_picture_in_picture" msgid="3040035547765350690">"Εισαγωγή εικόνας στη Λειτουργία εικόνας"</string>
+    <string name="lb_playback_time_separator" msgid="3208380806582304911">"/"</string>
+    <string name="lb_playback_controls_shown" msgid="6382160135512023238">"Εμφάνιση στοιχείων ελέγχου μέσων"</string>
+    <string name="lb_playback_controls_hidden" msgid="8940984081242033574">"Απόκρυψη στοιχείων ελέγχου μέσων, πιέστε το d-pad για εμφάνιση"</string>
     <string name="lb_guidedaction_finish_title" msgid="4015190340667946245">"Τέλος"</string>
     <string name="lb_guidedaction_continue_title" msgid="8842094924543063706">"Συνέχεια"</string>
-    <string name="lb_date_separator" msgid="2440386660906697298">"/"</string>
-    <string name="lb_time_separator" msgid="2763247350845477227">":"</string>
+    <string name="lb_media_player_error" msgid="3650250994187305396">"Κωδικός σφάλματος MediaPlayer %1$d επιπλέον %2$d"</string>
     <string name="lb_onboarding_get_started" msgid="6961440391306351139">"ΕΝΑΡΞΗ"</string>
     <string name="lb_onboarding_accessibility_next" msgid="2918313444257732434">"Επόμενο"</string>
 </resources>

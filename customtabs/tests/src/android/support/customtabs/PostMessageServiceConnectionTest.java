@@ -26,6 +26,7 @@ import android.support.test.filters.SmallTest;
 import android.support.test.rule.ActivityTestRule;
 import android.support.test.rule.ServiceTestRule;
 import android.support.test.runner.AndroidJUnit4;
+import android.support.testutils.PollingCheck;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -61,6 +62,7 @@ public class PostMessageServiceConnectionTest {
         mContext = mActivityTestRule.getActivity();
         mConnection = new PostMessageServiceConnection(
                 new CustomTabsSessionToken(mCallback.getStub())) {
+            @Override
             public void onPostMessageServiceConnected() {
                 mServiceConnected = true;
             }

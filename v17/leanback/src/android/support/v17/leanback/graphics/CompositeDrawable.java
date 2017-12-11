@@ -15,14 +15,12 @@
  */
 package android.support.v17.leanback.graphics;
 
-import android.annotation.TargetApi;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v17.leanback.graphics.BoundsRule.ValueRule;
 import android.support.v4.graphics.drawable.DrawableCompat;
@@ -191,6 +189,7 @@ public class CompositeDrawable extends Drawable implements Drawable.Callback {
     /**
      * @return Alpha value between 0(inclusive) and 255(inclusive)
      */
+    @Override
     public int getAlpha() {
         final Drawable dr = getFirstNonNullDrawable();
         if (dr != null) {
@@ -241,7 +240,6 @@ public class CompositeDrawable extends Drawable implements Drawable.Callback {
      * Wrapper class holding a drawable object and {@link BoundsRule} to update drawable bounds
      * when parent bound changes.
      */
-    @TargetApi(Build.VERSION_CODES.ICE_CREAM_SANDWICH)
     public static final class ChildDrawable {
         private final BoundsRule mBoundsRule;
         private final Drawable mDrawable;
